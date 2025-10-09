@@ -11,7 +11,7 @@ from datasets import load_dataset
 from tqdm import tqdm
 
 def train_language_model(language: str, mlm_prob: float = 0.15):
-    model_checkpoint = "FacebookAI/xlm-roberta-large"
+    model_checkpoint = "google-bert/bert-base-multilingual-uncased"
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
     def preprocess_function(examples):
         return tokenizer(examples["text"], padding="max_length", truncation=True, max_length=128)
@@ -24,12 +24,12 @@ def train_language_model(language: str, mlm_prob: float = 0.15):
         )
     training_args = TrainingArguments(
             output_dir=f"language_{language}",
-            eval_strategy="None",
+            eval_strategy="no",
             learning_rate=2e-5,
             num_train_epochs=1, 
             weight_decay=0.01,
             push_to_hub=False,
-            save_strategy="None"
+            save_strategy="no"
         )
     quantization_config = BitsAndBytesConfig(
             load_in_4bit=True,

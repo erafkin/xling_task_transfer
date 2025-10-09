@@ -8,7 +8,7 @@ from transformers import (
 )
 import torch
 from datasets import load_dataset
-
+from tqdm import tqdm
 
 def train_language_model(language: str, mlm_prob: float = 0.15):
     model_checkpoint = "facebook/xlm-roberta-large"
@@ -18,7 +18,7 @@ def train_language_model(language: str, mlm_prob: float = 0.15):
         return tokenizer(examples["text"], padding="max_length", truncation=True, max_length=128)
     data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm_probability=mlm_prob)
     # lm_dataset = load_dataset("text", data_files={"train": f"{data_folder}/{curricula}/train.train", "val":f"{data_folder}/{curricula}/dev.dev"}) 
-    lang_dataset = load_dataset(...)
+    lang_dataset = load_dataset("wikimedia/wikipedia", f"20231101.{language}")
     lang_dataset = lang_dataset.map(
             preprocess_function,
             batched=True,
@@ -28,7 +28,7 @@ def train_language_model(language: str, mlm_prob: float = 0.15):
             output_dir=f"language_{language}",
             eval_strategy="epoch",
             learning_rate=2e-5,
-            num_train_epochs=3, 
+            num_train_epochs=1, 
             weight_decay=0.01,
             push_to_hub=False,
             save_strategy="epoch"
@@ -58,4 +58,7 @@ def train_language_model(language: str, mlm_prob: float = 0.15):
     trainer.train()
     trainer.save_model(f"language_{language}")
 
-    
+if __name__ == "__main__":
+    languages = ["lt", "es", "de", "he"]
+    for language in tqdm(languages):
+        train_language_model(language=language)

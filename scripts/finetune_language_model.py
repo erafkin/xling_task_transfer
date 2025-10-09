@@ -11,13 +11,11 @@ from datasets import load_dataset
 from tqdm import tqdm
 
 def train_language_model(language: str, mlm_prob: float = 0.15):
-    model_checkpoint = "facebook/xlm-roberta-large"
-    model = AutoModelForMaskedLM.from_pretrained(model_checkpoint)
+    model_checkpoint = "FacebookAI/xlm-roberta-large"
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
     def preprocess_function(examples):
         return tokenizer(examples["text"], padding="max_length", truncation=True, max_length=128)
     data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm_probability=mlm_prob)
-    # lm_dataset = load_dataset("text", data_files={"train": f"{data_folder}/{curricula}/train.train", "val":f"{data_folder}/{curricula}/dev.dev"}) 
     lang_dataset = load_dataset("wikimedia/wikipedia", f"20231101.{language}")
     lang_dataset = lang_dataset.map(
             preprocess_function,
@@ -41,7 +39,7 @@ def train_language_model(language: str, mlm_prob: float = 0.15):
         )    
         
     model = AutoModelForMaskedLM.from_pretrained(
-        "facebook/xlm-roberta-large",
+        model_checkpoint,
         dtype=torch.float16,
         device_map="auto",
         attn_implementation="flash_attention_2",

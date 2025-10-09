@@ -30,20 +30,12 @@ def train_language_model(language: str, mlm_prob: float = 0.15):
             weight_decay=0.01,
             push_to_hub=False,
             save_strategy="no"
-        )
-    quantization_config = BitsAndBytesConfig(
-            load_in_4bit=True,
-            bnb_4bit_compute_dtype=torch.bfloat16,
-            bnb_4bit_quant_type="nf4", 
-            bnb_4bit_use_double_quant=True
-        )    
+        )   
         
     model = AutoModelForMaskedLM.from_pretrained(
         model_checkpoint,
         dtype=torch.float16,
-        device_map="auto",
-        attn_implementation="flash_attention_2",
-        quantization_config=quantization_config
+        device_map="auto"
     )
     trainer = Trainer(
             model=model,

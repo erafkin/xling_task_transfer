@@ -24,12 +24,12 @@ def train_language_model(language: str, mlm_prob: float = 0.15):
         )
     training_args = TrainingArguments(
             output_dir=f"language_{language}",
-            eval_strategy="epoch",
+            eval_strategy="None",
             learning_rate=2e-5,
             num_train_epochs=1, 
             weight_decay=0.01,
             push_to_hub=False,
-            save_strategy="epoch"
+            save_strategy="None"
         )
     quantization_config = BitsAndBytesConfig(
             load_in_4bit=True,
@@ -49,7 +49,6 @@ def train_language_model(language: str, mlm_prob: float = 0.15):
             model=model,
             args=training_args,
             train_dataset=lang_dataset["train"],
-            eval_dataset=lang_dataset["val"],
             data_collator=data_collator,
             tokenizer=tokenizer,
         )

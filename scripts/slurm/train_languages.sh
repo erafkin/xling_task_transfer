@@ -14,7 +14,8 @@ module load cuda/12.5
 
 module load gcc/11.4.0
  
-python3 -m venv venv
+python3.11 -m venv venv
 source venv/bin/activate
 pip3 install -r requirements.txt
-python3 ./scripts/finetune_language_model.py
+python3.11 --version
+python3.11 ./scripts/finetune_language_model.py

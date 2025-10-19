@@ -17,7 +17,7 @@ def train_NER_model(model_checkpoint):
         tokenized_inputs = tokenizer(examples["tokens"], truncation=True, is_split_into_words=True)
 
         labels = []
-        for i, label in enumerate(examples[f"ner_tags"]):
+        for i, label in enumerate(examples[f"ner_tags_index"]):
             word_ids = tokenized_inputs.word_ids(batch_index=i)  # Map tokens to their respective word.
             previous_word_idx = None
             label_ids = []
@@ -35,14 +35,18 @@ def train_NER_model(model_checkpoint):
         return tokenized_inputs
     data_collator = DataCollatorForTokenClassification(tokenizer=tokenizer)
     NER_dataset = load_dataset("MultiCoNER/multiconer_v2", "English (EN)", trust_remote_code=True)
+    print("done")
     tokenized_dataset= NER_dataset.map(
         tokenize_and_align_labels,
         batched=True,
         remove_columns=NER_dataset["train"].column_names
     )
-    label_names = NER_dataset["train"].features["ner_tags"].feature.names
-    id2label = {str(i): label for i, label in enumerate(label_names)}
-    label2id = {v: k for k, v in id2label.items()}
+    id2label = {}
+    label2id = {}
+    for row in NER_dataset["train"]:
+        for idx, tag in enumerate(row["ner_tags"]):
+            label2id[tag] = row["ner_tags_index"][idx]
+            id2label[row["ner_tags_index"][idx]] = tag
 
     training_args = TrainingArguments(
             output_dir=f"NER_en",
@@ -82,6 +86,6 @@ if __name__ == "__main__":
     parser.add_argument("task", help="the task to train an english model on")
     args = parser.parse_args()
     if args.task == "ner":
-        train_NER_model("language_en")
+       train_NER_model("language_en")
     else:
         print("no task: ", args.task)

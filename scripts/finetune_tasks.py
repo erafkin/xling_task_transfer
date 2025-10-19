@@ -1,61 +1,80 @@
 from transformers import (
     AutoModelForTokenClassification, 
     AutoTokenizer, 
-    BitsAndBytesConfig, 
-    DataCollatorForLanguageModeling,
+    DataCollatorForTokenClassification,
     TrainingArguments, 
     Trainer
 )
 import torch
 from datasets import load_dataset
 
-
-def train_pos_tagging(language: str, mlm_prob: float = 0.15):
-    model_checkpoint = "facebook/xlm-roberta-large"
-    model = AutoModelForTokenClassification.from_pretrained(model_checkpoint)
+def train_NER_model(model_checkpoint):
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
-    def preprocess_function(examples):
-        return tokenizer(examples["text"], padding="max_length", truncation=True, max_length=128)
-    data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm_probability=mlm_prob)
-    # lm_dataset = load_dataset("text", data_files={"train": f"{data_folder}/{curricula}/train.train", "val":f"{data_folder}/{curricula}/dev.dev"}) 
-    pos_dataset = load_dataset(...)
-    pos_dataset = pos_dataset.map(
-            preprocess_function,
-            batched=True,
-            num_proc=4,
-        )
+
+    def tokenize_and_align_labels(examples):
+        # from https://reybahl.medium.com/token-classification-in-python-with-huggingface-3fab73a6a20e
+        tokenized_inputs = tokenizer(examples["tokens"], truncation=True, is_split_into_words=True)
+
+        labels = []
+        for i, label in enumerate(examples[f"ner_tags"]):
+            word_ids = tokenized_inputs.word_ids(batch_index=i)  # Map tokens to their respective word.
+            previous_word_idx = None
+            label_ids = []
+            for word_idx in word_ids:  # Set the special tokens to -100.
+                if word_idx is None:
+                    label_ids.append(-100)
+                elif word_idx != previous_word_idx:  # Only label the first token of a given word.
+                    label_ids.append(label[word_idx])
+                else:
+                    label_ids.append(-100)
+                previous_word_idx = word_idx
+            labels.append(label_ids)
+
+        tokenized_inputs["labels"] = labels
+        return tokenized_inputs
+    data_collator = DataCollatorForTokenClassification(tokenizer=tokenizer)
+    NER_dataset = load_dataset("MultiCoNER/multiconer_v2", "English (EN)")
+    tokenized_dataset= NER_dataset.map(
+        tokenize_and_align_labels,
+        batched=True,
+        remove_columns=NER_dataset["train"].column_names
+    )
+    label_names = NER_dataset["train"].features["ner_tags"].feature.names
+    id2label = {str(i): label for i, label in enumerate(label_names)}
+    label2id = {v: k for k, v in id2label.items()}
+
     training_args = TrainingArguments(
-            output_dir=f"language_{language}",
-            eval_strategy="epoch",
+            output_dir=f"NER_en",
+            eval_strategy="no",
             learning_rate=2e-5,
             num_train_epochs=3, 
             weight_decay=0.01,
+            per_device_train_batch_size=16,
+            per_device_eval_batch_size=16,
             push_to_hub=False,
-            save_strategy="epoch"
-        )
-    quantization_config = BitsAndBytesConfig(
-            load_in_4bit=True,
-            bnb_4bit_compute_dtype=torch.bfloat16,
-            bnb_4bit_quant_type="nf4", 
-            bnb_4bit_use_double_quant=True
-        )    
+            save_strategy="no"
+        )   
         
     model = AutoModelForTokenClassification.from_pretrained(
-        "facebook/xlm-roberta-large",
+        model_checkpoint,
         dtype=torch.float16,
         device_map="auto",
-        attn_implementation="flash_attention_2",
-        quantization_config=quantization_config
+        local_files_only=True,
+        id2label=id2label, label2id=label2id
     )
     trainer = Trainer(
             model=model,
             args=training_args,
-            train_dataset=pos_dataset["train"],
-            eval_dataset=pos_dataset["val"],
+            train_dataset=tokenized_dataset["train"],
+            eval_dataset=tokenized_dataset["validation"],
             data_collator=data_collator,
             tokenizer=tokenizer,
         )
     trainer.train()
-    trainer.save_model(f"language_{language}")
+    trainer.save_model(f"NER_en")
 
-    
+
+# def train_POS_model(model_checkpoint):
+
+if __name__ == "__main__":
+    train_NER_model("language_en")

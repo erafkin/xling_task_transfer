@@ -47,7 +47,22 @@ def train_NER_model(model_checkpoint):
         for idx, tag in enumerate(row["ner_tags"]):
             label2id[tag] = row["ner_tags_index"][idx]
             id2label[row["ner_tags_index"][idx]] = tag
-
+    all_labels = []
+    for row in tokenized_dataset["train"]:
+        for l in row["labels"]:
+            if l != -100:
+                all_labels.append(l)
+    
+    print(f"[DEBUG] Labels min: {min(all_labels)}, max: {max(all_labels)}")
+    model = AutoModelForTokenClassification.from_pretrained(
+        model_checkpoint,
+        dtype=torch.float16,
+        device_map="auto",
+        local_files_only=True,
+        id2label=id2label, 
+        label2id=label2id,
+        num_labels=max(all_labels)
+    )
     training_args = TrainingArguments(
             output_dir=f"NER_en",
             eval_strategy="no",
@@ -57,16 +72,9 @@ def train_NER_model(model_checkpoint):
             per_device_train_batch_size=8,
             per_device_eval_batch_size=8,
             push_to_hub=False,
-            save_strategy="no"
-        )   
-        
-    model = AutoModelForTokenClassification.from_pretrained(
-        model_checkpoint,
-        dtype=torch.float16,
-        device_map="auto",
-        local_files_only=True,
-        id2label=id2label, label2id=label2id
-    )
+            save_strategy="no",
+            fp16=True
+        )    
     trainer = Trainer(
             model=model,
             args=training_args,
@@ -75,6 +83,7 @@ def train_NER_model(model_checkpoint):
             data_collator=data_collator,
             tokenizer=tokenizer,
         )
+
     trainer.train()
     trainer.save_model(f"NER_en")
 

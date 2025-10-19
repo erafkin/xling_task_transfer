@@ -7,6 +7,7 @@ from transformers import (
 )
 import torch
 from datasets import load_dataset
+import argparse
 
 def train_NER_model(model_checkpoint):
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
@@ -77,4 +78,10 @@ def train_NER_model(model_checkpoint):
 # def train_POS_model(model_checkpoint):
 
 if __name__ == "__main__":
-    train_NER_model("language_en")
+    parser = argparse.ArgumentParser(description="A simple script to demonstrate argument parsing.")
+    parser.add_argument("task", help="the task to train an english model on")
+    args = parser.parse_args()
+    if args.task == "ner":
+        train_NER_model("language_en")
+    else:
+        print("no task: ", args.task)

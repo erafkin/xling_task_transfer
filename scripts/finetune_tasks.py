@@ -34,7 +34,7 @@ def train_NER_model(model_checkpoint):
         tokenized_inputs["labels"] = labels
         return tokenized_inputs
     data_collator = DataCollatorForTokenClassification(tokenizer=tokenizer)
-    NER_dataset = load_dataset("MultiCoNER/multiconer_v2", "English (EN)")
+    NER_dataset = load_dataset("MultiCoNER/multiconer_v2", "English (EN)", trust_remote_code=True)
     tokenized_dataset= NER_dataset.map(
         tokenize_and_align_labels,
         batched=True,

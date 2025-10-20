@@ -12,6 +12,23 @@ import argparse
 def train_NER_model(model_checkpoint):
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
 
+    
+    data_collator = DataCollatorForTokenClassification(tokenizer=tokenizer)
+    NER_dataset = load_dataset("MultiCoNER/multiconer_v2", "English (EN)", trust_remote_code=True)
+        id2label = {}
+    label2id = {}
+    label_count = 0
+    for row in NER_dataset["train"]:
+        for idx, tag in enumerate(row["ner_tags"]):
+            if tag not in label2id:
+                label2id[tag] = label_count
+                id2label[label_count] = tag
+                label_count += 1
+    tokenized_dataset= NER_dataset.map(
+        tokenize_and_align_labels,
+        batched=True,
+        remove_columns=NER_dataset["train"].column_names
+    )
     def tokenize_and_align_labels(examples):
         # from https://reybahl.medium.com/token-classification-in-python-with-huggingface-3fab73a6a20e
         tokenized_inputs = tokenizer(examples["tokens"], truncation=True, is_split_into_words=True)
@@ -25,7 +42,7 @@ def train_NER_model(model_checkpoint):
                 if word_idx is None:
                     label_ids.append(-100)
                 elif word_idx != previous_word_idx:  # Only label the first token of a given word.
-                    label_ids.append(label[word_idx])
+                    label_ids.append(label2id[label[word_idx]])
                 else:
                     label_ids.append(-100)
                 previous_word_idx = word_idx
@@ -33,30 +50,6 @@ def train_NER_model(model_checkpoint):
 
         tokenized_inputs["labels"] = labels
         return tokenized_inputs
-    data_collator = DataCollatorForTokenClassification(tokenizer=tokenizer)
-    NER_dataset = load_dataset("MultiCoNER/multiconer_v2", "English (EN)", trust_remote_code=True)
-    print("done")
-    tokenized_dataset= NER_dataset.map(
-        tokenize_and_align_labels,
-        batched=True,
-        remove_columns=NER_dataset["train"].column_names
-    )
-    id2label = {}
-    label2id = {}
-    label_count = 0
-    for row in NER_dataset["train"]:
-        for idx, tag in enumerate(row["ner_tags"]):
-            if tag not in label2id:
-                label2id[tag] = label_count
-                id2label[label_count] = tag
-                label_count += 1
-    all_labels = []
-    for row in tokenized_dataset["train"]:
-        for l in row["labels"]:
-            if l != -100:
-                all_labels.append(l)
-    
-    print(f"[DEBUG] Labels min: {min(all_labels)}, max: {max(all_labels)}")
     model = AutoModelForTokenClassification.from_pretrained(
         model_checkpoint,
         dtype=torch.float16,

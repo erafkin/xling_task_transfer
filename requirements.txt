@@ -4,3 +4,4 @@ pandas
 datasets<4
 accelerate
 bitsandbytes
+evaluate

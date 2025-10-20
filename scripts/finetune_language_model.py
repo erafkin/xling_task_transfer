@@ -30,10 +30,10 @@ def train_language_model(language: str, mlm_prob: float = 0.15):
         lang_dataset = lang_dataset.map(
                 preprocess_function,
                 batched=True,
-                remove_columns=["text"],
-                batch_size=64
+                remove_columns=lang_dataset.column_names,
+                num_proc=4
             )
-        max_steps = None
+        max_steps = -1
     training_args = TrainingArguments(
             output_dir=f"language_{language}",
             eval_strategy="no",
@@ -43,12 +43,17 @@ def train_language_model(language: str, mlm_prob: float = 0.15):
             num_train_epochs=3, 
             weight_decay=0.01,
             push_to_hub=False,
-            save_strategy="no"
+            save_strategy="no",
+            logging_steps=100,
+            gradient_accumulation_steps=2,
+            fp16=True,
+            report_to=None,
+            remove_unused_columns=False,
         )   
         
     model = AutoModelForMaskedLM.from_pretrained(
         model_checkpoint,
-        dtype=torch.float16,
+        dtype=torch.float32,
         device_map="auto"
     )
     trainer = Trainer(
@@ -62,7 +67,8 @@ def train_language_model(language: str, mlm_prob: float = 0.15):
     trainer.save_model(f"language_{language}")
 
 if __name__ == "__main__":
-    languages = ["hi", "es", "de", "zh", "en"]
+    #languages = ["hi", "es", "de", "zh", "en"]
+    languages = ["hi"]
     for language in tqdm(languages):
         train_language_model(language=language)
 

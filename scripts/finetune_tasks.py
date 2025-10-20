@@ -17,7 +17,7 @@ def train_NER_model(model_checkpoint):
         tokenized_inputs = tokenizer(examples["tokens"], truncation=True, is_split_into_words=True)
 
         labels = []
-        for i, label in enumerate(examples[f"ner_tags_index"]):
+        for i, label in enumerate(examples[f"ner_tags"]):
             word_ids = tokenized_inputs.word_ids(batch_index=i)  # Map tokens to their respective word.
             previous_word_idx = None
             label_ids = []
@@ -43,10 +43,13 @@ def train_NER_model(model_checkpoint):
     )
     id2label = {}
     label2id = {}
+    label_count = 0
     for row in NER_dataset["train"]:
         for idx, tag in enumerate(row["ner_tags"]):
-            label2id[tag] = row["ner_tags_index"][idx]
-            id2label[row["ner_tags_index"][idx]] = tag
+            if tag not in label2id:
+                label2id[tag] = label_count
+                id2label[label_count] = tag
+                label_count += 1
     all_labels = []
     for row in tokenized_dataset["train"]:
         for l in row["labels"]:
@@ -61,7 +64,6 @@ def train_NER_model(model_checkpoint):
         local_files_only=True,
         id2label=id2label, 
         label2id=label2id,
-        num_labels=max(all_labels)
     )
     training_args = TrainingArguments(
             output_dir=f"NER_en",

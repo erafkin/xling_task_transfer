@@ -66,7 +66,7 @@ def train_NER_model(model_checkpoint):
             per_device_eval_batch_size=8,
             push_to_hub=False,
             save_strategy="no",
-            fp16=True
+            fp16=False
         )    
     trainer = Trainer(
             model=model,

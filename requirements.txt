@@ -5,3 +5,4 @@ datasets<4
 accelerate
 bitsandbytes
 evaluate
+seqeval

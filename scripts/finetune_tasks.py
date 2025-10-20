@@ -11,8 +11,6 @@ import argparse
 
 def train_NER_model(model_checkpoint):
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
-
-    
     data_collator = DataCollatorForTokenClassification(tokenizer=tokenizer)
     NER_dataset = load_dataset("MultiCoNER/multiconer_v2", "English (EN)", trust_remote_code=True)
     id2label = {}
@@ -24,15 +22,10 @@ def train_NER_model(model_checkpoint):
                 label2id[tag] = label_count
                 id2label[label_count] = tag
                 label_count += 1
-    tokenized_dataset= NER_dataset.map(
-        tokenize_and_align_labels,
-        batched=True,
-        remove_columns=NER_dataset["train"].column_names
-    )
+    
     def tokenize_and_align_labels(examples):
         # from https://reybahl.medium.com/token-classification-in-python-with-huggingface-3fab73a6a20e
         tokenized_inputs = tokenizer(examples["tokens"], truncation=True, is_split_into_words=True)
-
         labels = []
         for i, label in enumerate(examples[f"ner_tags"]):
             word_ids = tokenized_inputs.word_ids(batch_index=i)  # Map tokens to their respective word.
@@ -50,6 +43,11 @@ def train_NER_model(model_checkpoint):
 
         tokenized_inputs["labels"] = labels
         return tokenized_inputs
+    tokenized_dataset= NER_dataset.map(
+        tokenize_and_align_labels,
+        batched=True,
+        remove_columns=NER_dataset["train"].column_names
+    )
     model = AutoModelForTokenClassification.from_pretrained(
         model_checkpoint,
         dtype=torch.float16,

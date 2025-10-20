@@ -15,7 +15,7 @@ def train_NER_model(model_checkpoint):
     
     data_collator = DataCollatorForTokenClassification(tokenizer=tokenizer)
     NER_dataset = load_dataset("MultiCoNER/multiconer_v2", "English (EN)", trust_remote_code=True)
-        id2label = {}
+    id2label = {}
     label2id = {}
     label_count = 0
     for row in NER_dataset["train"]:

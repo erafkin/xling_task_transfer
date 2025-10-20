@@ -1,8 +1,9 @@
 from transformers import (
-    AutoModelForTokenClassification, 
+    AutoModelForMaskedLM, 
     AutoTokenizer, 
     DataCollatorForTokenClassification,
     TrainingArguments, 
+    AutoConfig,
     Trainer
 )
 import torch
@@ -10,8 +11,36 @@ from datasets import load_dataset
 import argparse
 import numpy as np
 import evaluate
+from torch import nn
+
+class TokenClassificationHead(nn.Module):
+    def __init__(self, encoder: nn.Module, num_labels: int, dropout: float = 0.1):
+        super().__init__()
+        self.bert = encoder
+        self.dropout = nn.Dropout(dropout)
+        self.classifier = nn.Linear(self.bert.config.hidden_size, num_labels)
+        nn.init.xavier_uniform_(self.classifier.weight)
+        nn.init.zeros_(self.classifier.bias)
+
+    def forward(self, input_ids, attention_mask=None, token_type_ids=None, labels=None, **kwargs):
+        outputs = self.bert(
+            input_ids,
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids,
+            return_dict=True,
+        )
+        logits = self.classifier(self.dropout(outputs.last_hidden_state))
+
+        loss = None
+        if labels is not None:
+            loss_fct = nn.CrossEntropyLoss()
+            loss = loss_fct(logits.view(-1, logits.size(-1)), labels.view(-1))
+
+        return {"loss": loss, "logits": logits}
 
 def train_NER_model(model_checkpoint):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
     data_collator = DataCollatorForTokenClassification(tokenizer=tokenizer)
     NER_dataset = load_dataset("MultiCoNER/multiconer_v2", "English (EN)", trust_remote_code=True)
@@ -66,25 +95,31 @@ def train_NER_model(model_checkpoint):
         batched=True,
         remove_columns=NER_dataset["test"].column_names
     )
-    model = AutoModelForTokenClassification.from_pretrained(
-        model_checkpoint,
-        device_map="auto",
-        local_files_only=True,
-        id2label=id2label, 
-        label2id=label2id,
-        num_labels=len(id2label),
-        dtype=torch.float32    
-    )
-    def unfreeze_all_parameters(module: torch.nn.Module):
-        """
-        Recursively set `requires_grad=True` for every parameter
-        and put the model into train mode.
-        """
-        for param in module.parameters():
-            param.requires_grad = True
-        module.train()            # also switch to training mode (e.g. dropout active)
 
-    unfreeze_all_parameters(model)
+    config   = AutoConfig.from_pretrained(model_checkpoint)
+    mlm_model = AutoModelForMaskedLM.from_pretrained(
+        model_checkpoint,
+        config=config,
+        torch_dtype=torch.float32,
+    ).to(device)
+
+    bert_encoder = mlm_model.bert
+    model = TokenClassificationHead(
+        encoder=bert_encoder,
+        num_labels=len(id2label),
+        dropout=0.1,
+    ).to(device)
+
+    def set_trainable(mod: nn.Module, train_encoder: bool = False):
+        for n, p in mod.named_parameters():
+            if "classifier" in n:
+                p.requires_grad = True
+            else:
+                p.requires_grad = train_encoder
+        mod.train()
+
+    set_trainable(model, train_encoder=True) 
+
     training_args = TrainingArguments(
             output_dir=f"NER_en",
             eval_strategy="epoch",

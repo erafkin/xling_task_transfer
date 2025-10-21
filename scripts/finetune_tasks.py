@@ -45,7 +45,7 @@ def train_NER_model(model_checkpoint):
     data_collator = DataCollatorForTokenClassification(tokenizer=tokenizer)
     NER_dataset = load_dataset("MultiCoNER/multiconer_v2", "English (EN)", trust_remote_code=True)
     # Build a dense mapping 0 … C‑1
-    unique_tags = sorted({tag for ex in NER_dataset["train"] for tag in ex["ner_tags"]})
+    unique_tags = sorted({tag for ex in NER_dataset["test"] for tag in ex["ner_tags"]})
     label2id = {tag: i for i, tag in enumerate(unique_tags)}
     id2label = {i: tag for tag, i in label2id.items()}
     def tokenize_and_align_labels(examples):
@@ -69,7 +69,7 @@ def train_NER_model(model_checkpoint):
         tokenized_inputs["labels"] = labels
         return tokenized_inputs
 
-    label_list = NER_dataset["train"]["ner_tags"]
+    label_list = NER_dataset["test"]["ner_tags"]
     def compute_metrics(eval_pred):
         predictions, labels = eval_pred
         predictions = np.argmax(predictions, axis=2)
@@ -100,7 +100,7 @@ def train_NER_model(model_checkpoint):
     mlm_model = AutoModelForMaskedLM.from_pretrained(
         model_checkpoint,
         config=config,
-        torch_dtype=torch.float32,
+        dtype=torch.float32,
     ).to(device)
 
     bert_encoder = mlm_model.bert
@@ -135,7 +135,7 @@ def train_NER_model(model_checkpoint):
     trainer = Trainer(
             model=model,
             args=training_args,
-            train_dataset=tokenized_dataset["train"],
+            train_dataset=tokenized_dataset["test"],
             eval_dataset=tokenized_dataset["validation"],
             data_collator=data_collator,
             tokenizer=tokenizer,

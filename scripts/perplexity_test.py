@@ -86,7 +86,11 @@ if __name__ == "__main__":
         for model in models:
             language = model.split("_")[1]
             with open(f"perplexity_eval_data/{language}.txt", "r") as f:
-                sentences = f.readlines()
+                sentences = f.read()
+                if language == "zh":
+                    sentences = sentences.split("。")
+                else:
+                    sentences = sentences.split(".")
                 f.close()
             avg_loss, ppl, nan, inf, total_norm = eval_model(base_model, sentences=sentences)
             file.write(f"\n=== LANGUAGE {language} ===")

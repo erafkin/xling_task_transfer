@@ -1,38 +1,21 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 import argparse, math, sys
 from tqdm.auto import tqdm
 import torch
 from transformers import AutoTokenizer, AutoModelForMaskedLM, DataCollatorForLanguageModeling
-from datasets import load_dataset
+"""
+    Method for calculating perplexity and loss to make sure that the gradients didnt vanish/explode. 
+    Scaffolded using ChatGPT.
+"""
 
-def parse_args():
-    p = argparse.ArgumentParser()
-    p.add_argument("--model_dir", required=True, help="Path to the local MLM checkpoint")
-    p.add_argument("--dataset", default="wikitext", help="HF dataset name (e.g. wikitext)")
-    p.add_argument("--subset", default="wikitext-2-raw-v1", help="Dataset subset")
-    p.add_argument("--split", default="test", help="Dataset split")
-    p.add_argument("--batch_size", type=int, default=32)
-    p.add_argument("--max_len", type=int, default=512, help="Maximum sequence length")
-    return p.parse_args()
-
-def main():
-    args = parse_args()
+def eval_model(model_dir, sentences, batch_size: int = 32, max_len: int = 512):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # ------------------- Load model & tokenizer -------------------
-    tokenizer = AutoTokenizer.from_pretrained(args.model_dir)
+    tokenizer = AutoTokenizer.from_pretrained(model_dir)
     model = AutoModelForMaskedLM.from_pretrained(
-        args.model_dir,
+        model_dir,
         torch_dtype=torch.float32,
     ).to(device).eval()
-
-    # ------------------- Load evaluation sentences -------------------
-    raw = load_dataset(args.dataset, args.subset, split=args.split)
-    sentences = [s for s in raw["text"] if s.strip() != ""]
-    print(f"Loaded {len(sentences)} non‑empty sentences from {args.dataset}/{args.subset}:{args.split}")
-
     # ------------------- MLM collator -------------------
     collator = DataCollatorForLanguageModeling(
         tokenizer=tokenizer,
@@ -42,7 +25,7 @@ def main():
 
     # ------------------- Evaluation loop -------------------
     total_loss, total_tokens = 0.0, 0
-    batch_sz = args.batch_size
+    batch_sz = batch_size
 
     def batches(it):
         for i in range(0, len(it), batch_sz):
@@ -54,7 +37,7 @@ def main():
             tokenized = tokenizer(batch_sent,
                             padding=False,
                             truncation=True,
-                            max_length=args.max_len)
+                            max_length=max_len)
 
             tokenized_list = [{k: v[i] for k, v in tokenized.items()} for i in range(len(tokenized['input_ids']))]
             batch = collator(tokenized_list)
@@ -74,6 +57,7 @@ def main():
     ppl = math.exp(avg_loss)
 
     print("\n=== Perplexity result ===")
+    print(f"Model: {model_dir}")
     print(f"Average token‑wise loss : {avg_loss:.4f}")
     print(f"Perplexity (exp(loss)) : {ppl:.2f}")
 
@@ -81,16 +65,54 @@ def main():
     nan = [n for n, p in model.named_parameters() if torch.isnan(p).any()]
     inf = [n for n, p in model.named_parameters() if torch.isinf(p).any()]
     if nan:
-        print(f"⚠️  NaNs in: {', '.join(nan)}")
+        print(f" NaNs in: {', '.join(nan)}")
     else:
-        print("✅ No NaNs")
+        print("No NaNs")
     if inf:
-        print(f"⚠️  Infs in: {', '.join(inf)}")
+        print(f" Infs in: {', '.join(inf)}")
     else:
-        print("✅ No Infs")
+        print("No Infs")
 
     total_norm = sum(p.norm().item() ** 2 for p in model.parameters()) ** 0.5
     print(f"🔎 Total L2 norm of parameters: {total_norm:.2f}")
+    return avg_loss, ppl, nan, inf, total_norm
 
 if __name__ == "__main__":
-    main()
+    models = ["language_en", "language_es", "language_de", "language_hi", "language_zh"]
+    base_model = "google-bert/bert-base-multilingual-uncased"
+    with open("perplexity_eval_data/summary.txt", "w") as file:
+        for model in models:
+            language = model.split("_")[1]
+            with open(f"perplexity_eval_data/{language}.txt", "r") as f:
+                sentences = f.readlines()
+                f.close()
+            avg_loss, ppl, nan, inf, total_norm = eval_model(base_model, sentences=sentences)
+            file.write(f"\n=== LANGUAGE {language} ===")
+            file.write("\n=== Perplexity result ===")
+            file.write(f"Model: base")
+            file.write(f"Average token‑wise loss : {avg_loss:.4f}")
+            file.write(f"Perplexity (exp(loss)) : {ppl:.2f}")
+            if nan:
+                file.write(f" NaNs in: {', '.join(nan)}")
+            else:
+                file.write("No NaNs")
+            if inf:
+                file.write(f" Infs in: {', '.join(inf)}")
+            else:
+                file.write("No Infs")
+            file.write(f"🔎 Total L2 norm of parameters: {total_norm:.2f}")
+            avg_loss, ppl, nan, inf, total_norm = eval_model(model, sentences=sentences)
+            file.write("\n=== Perplexity result ===")
+            file.write(f"Model: {model}")
+            file.write(f"Average token‑wise loss : {avg_loss:.4f}")
+            file.write(f"Perplexity (exp(loss)) : {ppl:.2f}")
+            if nan:
+                file.write(f" NaNs in: {', '.join(nan)}")
+            else:
+                file.write("No NaNs")
+            if inf:
+                file.write(f" Infs in: {', '.join(inf)}")
+            else:
+                file.write("No Infs")
+            file.write(f"🔎 Total L2 norm of parameters: {total_norm:.2f}")
+    file.close()

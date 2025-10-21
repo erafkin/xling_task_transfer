@@ -5,7 +5,7 @@
 #SBATCH --output="%x.o%j"
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1
-#SBATCH --mem=10G
+#SBATCH --mem=13G
 #SBATCH --time=60:00:00
 #SBATCH --mail-user=epr41@georgetown.edu
 #SBATCH --mail-type=END,FAIL

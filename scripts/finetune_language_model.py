@@ -9,21 +9,21 @@ import torch
 from datasets import load_dataset, Dataset
 from tqdm import tqdm
 
-def train_language_model(language: str, mlm_prob: float = 0.15):
+def train_language_model(language: str, mlm_prob: float = 0.15, num_samples:int = 500000, batch_size:int = 32):
     model_checkpoint = "google-bert/bert-base-multilingual-uncased"
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
     def preprocess_function(examples):
         return tokenizer(examples["text"], padding="max_length", truncation=True, max_length=128)
     data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm_probability=mlm_prob)
-    if language == "en":
+    if num_samples > 0:
         lang_dataset = load_dataset("wikimedia/wikipedia", f"20231101.{language}", streaming=True, split="train", cache_dir="/home/scratch/epr41")
-        lang_dataset = lang_dataset.take(500000)
+        lang_dataset = lang_dataset.take(num_samples)
         lang_dataset = lang_dataset.map(
                 preprocess_function,
                 batched=True,
                 remove_columns=lang_dataset.column_names
             )
-        max_steps = (500000 + 32 - 1) // 32
+        max_steps = (num_samples + batch_size - 1) // batch_size
     else:
         lang_dataset = load_dataset("wikimedia/wikipedia", f"20231101.{language}",split="train")
         lang_dataset = lang_dataset.map(
@@ -40,7 +40,7 @@ def train_language_model(language: str, mlm_prob: float = 0.15):
             save_steps=500,
             eval_steps=500,
             learning_rate=2e-5,
-            per_device_train_batch_size=32,
+            per_device_train_batch_size=batch_size,
             max_steps=max_steps,
             num_train_epochs=3,
             overwrite_output_dir=True,
@@ -73,8 +73,8 @@ def train_language_model(language: str, mlm_prob: float = 0.15):
     trainer.save_model(f"language_{language}")
 
 if __name__ == "__main__":
-    #languages = ["hi", "es", "de", "zh", "en"]
-    languages = ["en"]
+    languages = ["hi", "es", "de", "zh"]
+    #languages = ["en"]
     for language in tqdm(languages):
         train_language_model(language=language)
 

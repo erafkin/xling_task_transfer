@@ -6,6 +6,7 @@ from task_vectors import TaskVector
 from transformers import AutoModelForMaskedLM, AutoTokenizer
 from tqdm import tqdm
 import math
+from sklearn.metrics import precision_score, recall_score, f1_score
 
 def get_language_vector(base_model: str, saved_language: str):
     lang_vector = TaskVector(pretrained_checkpoint=AutoModelForMaskedLM.from_pretrained(base_model),
@@ -18,17 +19,21 @@ def apply_language_vector_to_model(ner_model_checkpoint: str, language_vector:Ta
 
 def compute_metrics(predictions, labels):
 
-        # Remove ignored labels (-100)
-        true_predictions = [
-            [p for (p, l) in zip(prediction, label) if l != -100]
-            for prediction, label in zip(predictions, labels)
-        ]
-        true_labels = [
-            [l for (p, l) in zip(prediction, label) if l != -100]
-            for prediction, label in zip(predictions, labels)
-        ]
+    # Remove ignored labels (-100)
+    y_pred = [
+        [p for (p, l) in zip(prediction, label) if l != -100]
+        for prediction, label in zip(predictions, labels)
+    ]
+    y_true = [
+        [l for (p, l) in zip(prediction, label) if l != -100]
+        for prediction, label in zip(predictions, labels)
+    ]
+    assert(len(y_true) == len(y_pred))
+    precision = precision_score(y_true, y_pred)
+    recall = recall_score(y_true, y_pred)
+    f1 = f1_score(y_true, y_pred)
+    return precision, recall, f1
 
-        #TODO P, R, F1
 def lambda_search(eval_set, coef):
     ...
 
@@ -41,9 +46,12 @@ def get_label_mapping():
     return id2label, label2id
 
 def test_lang_ner(ner_model, language_model, pretrained_checkpoint, language_dataset, lambdas: List[float]= [0.0, 0.25, 0.5, 0.75, 1.0], batch_size:int=32):
-    lv = get_language_vector(pretrained_checkpoint, language_model)
-    best_lambda = 1.0
-    ner = apply_language_vector_to_model(ner_model, lv, best_lambda) # TODO find best lambda
+    if language_dataset != "English (EN)":
+        lv = get_language_vector(pretrained_checkpoint, language_model)
+        best_lambda = 1.0
+        ner = apply_language_vector_to_model(ner_model, lv, best_lambda) # TODO find best lambda
+    else:
+       ner = torch.load(pretrained_checkpoint) 
     NER_dataset = load_dataset("MultiCoNER/multiconer_v2", language_dataset, trust_remote_code=True)
     tokenizer = AutoTokenizer.from_pretrained(pretrained_checkpoint)
     id2label, label2id = get_label_mapping()
@@ -75,14 +83,33 @@ def test_lang_ner(ner_model, language_model, pretrained_checkpoint, language_dat
         for i in range(0, len(it), batch_size):
             yield it[i:i+batch_size]
 
+    preds = []
+    labels = []
     ner.eval()
+
     with torch.no_grad():
-        preds = []
-        labels = []
         for batch_sent in tqdm(batches(tokenized_dataset), total=math.ceil(len(tokenized_dataset)/batch_size), desc="Eval"):
             ps = ner(**batch_sent["input_ids"])
             ps = np.argmax(ps, axis=2)
             ls = batch_sent["labels"]
             preds += ps
             labels += ls
-        p, r, f1 = compute_metrics(preds, labels, id2label)
+    p, r, f1 = compute_metrics(preds, labels, id2label)
+    return p, r, f1
+
+if __name__ == "__main__":
+    datasets = ["English (EN)", "Spanish (ES)", "Hindi (HI)"]#, "German (DE)", "Chinese (ZH)"]
+    language_models = ["language_en_done", "language_es_done", "language_hi_done"]
+    with open("scripts/transfer_eval/NER.txt", "w") as f:
+        for idx, model in enumerate(language_models):
+            p, r, f1 = test_lang_ner("NER_en", model, "language_en_done", datasets[idx])
+            f.write(f"\n======language: {model.split("_")[1]}=======\n")
+            f.write(f"precision: {p}\n")
+            f.write(f"recall: {r}\n")
+            f.write(f"f1: {f1}")
+        f.close()
+
+
+
+
+

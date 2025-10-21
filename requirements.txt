@@ -6,3 +6,4 @@ accelerate
 bitsandbytes
 evaluate
 seqeval
+scikit-learn

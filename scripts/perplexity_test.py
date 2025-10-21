@@ -79,6 +79,8 @@ def eval_model(model_dir, sentences, batch_size: int = 32, max_len: int = 512):
 
 if __name__ == "__main__":
     models = ["language_en", "language_es", "language_de", "language_hi", "language_zh"]
+    models = ["language_en_done", "language_es_done", "language_done"]
+
     base_model = "google-bert/bert-base-multilingual-uncased"
     with open("perplexity_eval_data/summary.txt", "w") as file:
         for model in models:

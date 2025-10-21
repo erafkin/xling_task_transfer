@@ -18,10 +18,4 @@ python3.11 -m venv venv
 source venv/bin/activate
 pip3 install -r requirements.txt
 python3.11 --version
-python3.11 scripts/perplexity_test.py \
-    --model_dir ./language_en \
-    --dataset wikitext \
-    --subset wikitext-2-raw-v1 \
-    --split test \
-    --batch_size 32
-
+python3.11 scripts/perplexity_test.py 

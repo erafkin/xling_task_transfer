@@ -16,9 +16,7 @@ def apply_language_vector_to_model(ner_model_checkpoint: str, language_vector:Ta
     ner_model = language_vector.apply_to(ner_model_checkpoint, scaling_coef=lambda_coef)
     return ner_model
 
-def compute_metrics(eval_pred):
-        predictions, labels = eval_pred
-        predictions = np.argmax(predictions, axis=2)
+def compute_metrics(predictions, labels):
 
         # Remove ignored labels (-100)
         true_predictions = [
@@ -34,17 +32,43 @@ def compute_metrics(eval_pred):
 def lambda_search(eval_set, coef):
     ...
 
+def get_label_mapping():
+    NER_dataset = load_dataset("MultiCoNER/multiconer_v2", "English (EN)", trust_remote_code=True)
+    # Build a dense mapping 0 … C‑1
+    unique_tags = sorted({tag for ex in NER_dataset["test"] for tag in ex["ner_tags"]})
+    label2id = {tag: i for i, tag in enumerate(unique_tags)}
+    id2label = {i: tag for tag, i in label2id.items()}
+    return id2label, label2id
+
 def test_lang_ner(ner_model, language_model, pretrained_checkpoint, language_dataset, lambdas: List[float]= [0.0, 0.25, 0.5, 0.75, 1.0], batch_size:int=32):
     lv = get_language_vector(pretrained_checkpoint, language_model)
     best_lambda = 1.0
     ner = apply_language_vector_to_model(ner_model, lv, best_lambda) # TODO find best lambda
     NER_dataset = load_dataset("MultiCoNER/multiconer_v2", language_dataset, trust_remote_code=True)
     tokenizer = AutoTokenizer.from_pretrained(pretrained_checkpoint)
-    def tokenize_dataset(examples):
+    id2label, label2id = get_label_mapping()
+    def tokenize_and_align_labels(examples):
+        # from https://reybahl.medium.com/token-classification-in-python-with-huggingface-3fab73a6a20e
         tokenized_inputs = tokenizer(examples["tokens"], truncation=True, is_split_into_words=True)
+        labels = []
+        for i, label in enumerate(examples[f"ner_tags"]):
+            word_ids = tokenized_inputs.word_ids(batch_index=i)  # Map tokens to their respective word.
+            previous_word_idx = None
+            label_ids = []
+            for word_idx in word_ids:  # Set the special tokens to -100.
+                if word_idx is None:
+                    label_ids.append(-100)
+                elif word_idx != previous_word_idx:  # Only label the first token of a given word.
+                    label_ids.append(label2id[label[word_idx]])
+                else:
+                    label_ids.append(-100)
+                previous_word_idx = word_idx
+            labels.append(label_ids)
+
+        tokenized_inputs["labels"] = labels
         return tokenized_inputs
     tokenized_dataset= NER_dataset.map(
-        tokenize_dataset,
+        tokenize_and_align_labels,
         batched=True,
     )
     def batches(it):
@@ -53,6 +77,12 @@ def test_lang_ner(ner_model, language_model, pretrained_checkpoint, language_dat
 
     ner.eval()
     with torch.no_grad():
+        preds = []
+        labels = []
         for batch_sent in tqdm(batches(tokenized_dataset), total=math.ceil(len(tokenized_dataset)/batch_size), desc="Eval"):
-            predictions = ner(**batch_sent["input_ids"])
-            labels = batch_sent["labels"]
+            ps = ner(**batch_sent["input_ids"])
+            ps = np.argmax(ps, axis=2)
+            ls = batch_sent["labels"]
+            preds += ps
+            labels += ls
+        p, r, f1 = compute_metrics(preds, labels, id2label)

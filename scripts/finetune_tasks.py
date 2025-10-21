@@ -10,7 +10,6 @@ import torch
 from datasets import load_dataset
 import argparse
 import numpy as np
-import evaluate
 from torch import nn
 
 class TokenClassificationHead(nn.Module):

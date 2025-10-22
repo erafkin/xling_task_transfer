@@ -87,9 +87,9 @@ def test_lang_ner(ner, language_model, pretrained_checkpoint, language_dataset, 
     preds = []
     labels = []
     ner.to(device).eval()
-
+    test = tokenized_dataset["test"]
     with torch.no_grad():
-        for batch_sent in tqdm(batches(tokenized_dataset), total=math.ceil(len(tokenized_dataset)/batch_size), desc="Eval"):
+        for batch_sent in tqdm(batches(test), total=math.ceil(len(test)/batch_size), desc="Eval"):
             input_ids = batch_sent["input_ids"].to(device)
             ps = ner(input_ids)
             ps = np.argmax(ps, axis=2)

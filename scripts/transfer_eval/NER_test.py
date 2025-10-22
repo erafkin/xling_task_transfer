@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from typing import List
 from datasets import load_dataset
-from task_vectors import TaskVector
+from scripts.task_vectors import TaskVector
 from transformers import AutoModelForMaskedLM, AutoTokenizer
 from tqdm import tqdm
 import math

@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from typing import List
 from datasets import load_dataset
-from transformers import AutoModelForMaskedLM, AutoTokenizer, AutoConfig
+from transformers import AutoModelForMaskedLM, AutoTokenizer, AutoConfig, DataCollatorForTokenClassification
 from tqdm import tqdm
 import math
 from sklearn.metrics import precision_score, recall_score, f1_score
@@ -88,9 +88,12 @@ def test_lang_ner(ner, language_model, pretrained_checkpoint, language_dataset, 
     labels = []
     ner.to(device).eval()
     test = tokenized_dataset["test"]
+    collator = DataCollatorForTokenClassification(tokenizer=tokenizer)
     with torch.no_grad():
         for batch_sent in tqdm(batches(test), total=math.ceil(len(test)/batch_size), desc="Eval"):
-            input_ids = [id.to(device) for id in batch_sent["input_ids"]]
+            tokenized_list = [{k: v[i] for k, v in batch_sent.items()} for i in range(len(batch_sent['input_ids']))]
+            batch = collator(tokenized_list)
+            input_ids = batch["input_ids"].to(device)
             ps = ner(input_ids)
             ps = np.argmax(ps, axis=2)
             ls = batch_sent["labels"]

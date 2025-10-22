@@ -96,6 +96,7 @@ def test_lang_ner(ner, language_model, pretrained_checkpoint, language_dataset, 
             preds += ps
             labels += ls
     accuracy = compute_metrics(preds, labels)
+    ner.to("cpu")
     return accuracy
 
 if __name__ == "__main__":

@@ -112,9 +112,11 @@ if __name__ == "__main__":
     )
     bert_encoder = mlm_model.bert
     ner_model = TokenClassificationHead(bert_encoder, num_labels=len(id2label))
-    load_model(ner_model, "NER_en")
+    load_model(ner_model, "NER_en", device="cpu")
+    print('ner model loaded')
     with open("output/NER.txt", "w") as f:
         for idx, model in enumerate(language_models):
+            print("language model", model)
             p, r, f1 = test_lang_ner(ner_model, model, "language_en_done", datasets[idx], label2id)
             f.write(f"\n======language: {model.split('_')[1]}=======\n")
             f.write(f"precision: {p}\n")

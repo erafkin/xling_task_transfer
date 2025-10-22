@@ -31,12 +31,11 @@ def compute_metrics(predictions, labels):
         [l for (p, l) in zip(prediction, label) if l != -100]
         for prediction, label in zip(predictions, labels)
     ]
-    assert(len(y_true) == len(y_pred))
-    precision = precision_score(y_true, y_pred)
-    recall = recall_score(y_true, y_pred)
-    f1 = f1_score(y_true, y_pred)
-    return precision, recall, f1
-
+    # Simple accuracy calculation
+    total = sum(len(pred) for pred in y_pred)
+    correct = sum(1 for pred, lab in zip(y_pred, y_true) for p, l in zip(pred, lab) if p == l)
+    accuracy = correct / total if total > 0 else 0
+    return {"accuracy": accuracy}
 def lambda_search(eval_set, coef):
     ...
 

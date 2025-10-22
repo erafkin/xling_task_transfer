@@ -48,10 +48,9 @@ class TaskVector():
                 new_vector[key] = - self.vector[key]
         return TaskVector(vector=new_vector)
 
-    def apply_to(self, pretrained_checkpoint, scaling_coef=1.0):
+    def apply_to(self, pretrained_model, scaling_coef=1.0):
         """Apply a task vector to a pretrained model."""
         with torch.no_grad():
-            pretrained_model = torch.load(pretrained_checkpoint)
             new_state_dict = {}
             pretrained_state_dict = pretrained_model.state_dict()
             for key in pretrained_state_dict:

@@ -73,8 +73,8 @@ def train_language_model(language: str, mlm_prob: float = 0.15, num_samples:int 
     trainer.save_model(f"language_{language}")
 
 if __name__ == "__main__":
-    languages = ["hi", "es", "de", "zh"]
-    #languages = ["en"]
+    #languages = ["hi", "es", "de", "zh"]
+    languages = ["es", "de", "zh"]
     for language in tqdm(languages):
         train_language_model(language=language)
 

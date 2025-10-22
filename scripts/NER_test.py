@@ -92,9 +92,9 @@ def test_lang_ner(ner, language_model, pretrained_checkpoint, language_dataset, 
     with torch.no_grad():
         for batch in tqdm(test_dataloader):
             input_ids = batch["input_ids"].to(device)
-            ps = ner(input_ids)
+            ps = ner(input_ids).cpu().tolist()
             print(ps)
-            ps = torch.argmax(ps, dim=-1).cpu().tolist()
+            ps = torch.argmax(ps, dim=-1)
             ls = batch["labels"].cpu().tolist()
             preds += ps
             labels += ls

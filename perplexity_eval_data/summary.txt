@@ -1,0 +1,85 @@
+
+=== LANGUAGE en ===
+
+=== Perplexity result ===
+Model: base
+Average token‑wise loss : 2.4767
+Perplexity (exp(loss)) : 11.90
+No NaNs
+No Infs
+🔎 Total L2 norm of parameters: 570.72
+
+=== Perplexity result ===
+Model: language_en_done
+Average token‑wise loss : 2.0824
+Perplexity (exp(loss)) : 8.02
+No NaNs
+No Infs🔎 Total L2 norm of parameters: 568.81
+
+=== LANGUAGE es ===
+
+=== Perplexity result ===
+Model: base
+Average token‑wise loss : 1.2638
+Perplexity (exp(loss)) : 3.54
+No NaNs
+No Infs
+🔎 Total L2 norm of parameters: 570.72
+
+=== Perplexity result ===
+Model: language_es_done
+Average token‑wise loss : 1.2226
+Perplexity (exp(loss)) : 3.40
+No NaNs
+No Infs🔎 Total L2 norm of parameters: 568.58
+
+=== LANGUAGE hi ===
+
+=== Perplexity result ===
+Model: base
+Average token‑wise loss : 1.1822
+Perplexity (exp(loss)) : 3.26
+No NaNs
+No Infs
+🔎 Total L2 norm of parameters: 570.72
+
+=== Perplexity result ===
+Model: language_hi_done
+Average token‑wise loss : 1.1828
+Perplexity (exp(loss)) : 3.26
+No NaNs
+No Infs🔎 Total L2 norm of parameters: 568.41
+
+=== LANGUAGE de ===
+
+=== Perplexity result ===
+Model: base
+Average token‑wise loss : 2.4809
+Perplexity (exp(loss)) : 11.95
+No NaNs
+No Infs
+🔎 Total L2 norm of parameters: 570.72
+
+=== Perplexity result ===
+Model: language_de_done
+Average token‑wise loss : 1.1352
+Perplexity (exp(loss)) : 3.11
+No NaNs
+No Infs🔎 Total L2 norm of parameters: 568.79
+
+=== LANGUAGE zh ===
+
+=== Perplexity result ===
+Model: base
+Average token‑wise loss : 1.7245
+Perplexity (exp(loss)) : 5.61
+No NaNs
+No Infs
+🔎 Total L2 norm of parameters: 570.72
+
+=== Perplexity result ===
+Model: language_zh_done
+Average token‑wise loss : 1.5326
+Perplexity (exp(loss)) : 4.63
+No NaNs
+No Infs🔎 Total L2 norm of parameters: 568.05

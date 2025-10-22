@@ -100,7 +100,7 @@ def test_lang_ner(ner_model, language_model, pretrained_checkpoint, language_dat
 if __name__ == "__main__":
     datasets = ["English (EN)", "Spanish (ES)", "Hindi (HI)"]#, "German (DE)", "Chinese (ZH)"]
     language_models = ["language_en_done", "language_es_done", "language_hi_done"]
-    with open("scripts/transfer_eval/NER.txt", "w") as f:
+    with open("output/NER.txt", "w") as f:
         for idx, model in enumerate(language_models):
             p, r, f1 = test_lang_ner("NER_en", model, "language_en_done", datasets[idx])
             f.write(f"\n======language: {model.split('_')[1]}=======\n")

@@ -35,7 +35,7 @@ def compute_metrics(predictions, labels):
     total = sum(len(pred) for pred in y_pred)
     correct = sum(1 for pred, lab in zip(y_pred, y_true) for p, l in zip(pred, lab) if p == l)
     accuracy = correct / total if total > 0 else 0
-    return {"accuracy": accuracy}
+    return accuracy
 def lambda_search(eval_set, coef):
     ...
 
@@ -95,8 +95,8 @@ def test_lang_ner(ner, language_model, pretrained_checkpoint, language_dataset, 
             ls = batch["labels"].cpu().tolist()
             preds += ps
             labels += ls
-    p, r, f1 = compute_metrics(preds, labels)
-    return p, r, f1
+    accuracy = compute_metrics(preds, labels)
+    return accuracy
 
 if __name__ == "__main__":
     datasets = ["English (EN)", "Spanish (ES)", "Hindi (HI)"]#, "German (DE)", "Chinese (ZH)"]
@@ -116,11 +116,10 @@ if __name__ == "__main__":
     with open("output/NER.txt", "w") as f:
         for idx, model in enumerate(language_models):
             print("language model", model)
-            p, r, f1 = test_lang_ner(ner_model, model, "language_en_done", datasets[idx], label2id)
+            accuracy= test_lang_ner(ner_model, model, "language_en_done", datasets[idx], label2id)
             f.write(f"\n======language: {model.split('_')[1]}=======\n")
-            f.write(f"precision: {p}\n")
-            f.write(f"recall: {r}\n")
-            f.write(f"f1: {f1}")
+            f.write(f"accuracy: {accuracy}\n")
+
         f.close()
 
 

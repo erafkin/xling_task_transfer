@@ -2,11 +2,13 @@ import torch
 import numpy as np
 from typing import List
 from datasets import load_dataset
-from task_vectors import TaskVector
 from transformers import AutoModelForMaskedLM, AutoTokenizer
 from tqdm import tqdm
 import math
 from sklearn.metrics import precision_score, recall_score, f1_score
+from safetensors.torch import load_model
+from task_vectors import TaskVector
+from finetune_tasks import TokenClassificationHead
 
 def get_language_vector(base_model: str, saved_language: str):
     lang_vector = TaskVector(pretrained_checkpoint=AutoModelForMaskedLM.from_pretrained(base_model),
@@ -51,6 +53,9 @@ def test_lang_ner(ner_model, language_model, pretrained_checkpoint, language_dat
         best_lambda = 1.0
         ner = apply_language_vector_to_model(ner_model, lv, best_lambda) # TODO find best lambda
     else:
+       ner = TokenClassificationHead()
+       load_model(ner, language_model)
+
        ner = torch.load(pretrained_checkpoint) 
     NER_dataset = load_dataset("MultiCoNER/multiconer_v2", language_dataset, trust_remote_code=True)
     tokenizer = AutoTokenizer.from_pretrained(pretrained_checkpoint)

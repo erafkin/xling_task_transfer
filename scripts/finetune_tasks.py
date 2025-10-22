@@ -67,8 +67,6 @@ def train_NER_model(model_checkpoint):
 
         tokenized_inputs["labels"] = labels
         return tokenized_inputs
-
-    label_list = NER_dataset["test"]["ner_tags"]
     def compute_metrics(eval_pred):
         predictions, labels = eval_pred
         predictions = np.argmax(predictions, axis=2)

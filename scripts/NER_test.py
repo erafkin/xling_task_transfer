@@ -57,36 +57,12 @@ def test_lang_ner(ner, language_model, pretrained_checkpoint, language_dataset, 
     ner
     NER_dataset = load_dataset("MultiCoNER/multiconer_v2", language_dataset, trust_remote_code=True)
     tokenizer = AutoTokenizer.from_pretrained(pretrained_checkpoint)
-    def tokenize_and_align_labels(examples):
-        # from https://reybahl.medium.com/token-classification-in-python-with-huggingface-3fab73a6a20e
-        tokenized_inputs = tokenizer(examples["tokens"], truncation=True, is_split_into_words=True)
-        labels = []
-        for i, label in enumerate(examples[f"ner_tags"]):
-            word_ids = tokenized_inputs.word_ids(batch_index=i)  # Map tokens to their respective word.
-            previous_word_idx = None
-            label_ids = []
-            for word_idx in word_ids:  # Set the special tokens to -100.
-                if word_idx is None:
-                    label_ids.append(-100)
-                elif word_idx != previous_word_idx:  # Only label the first token of a given word.
-                    label_ids.append(label2id[label[word_idx]])
-                else:
-                    label_ids.append(-100)
-                previous_word_idx = word_idx
-            labels.append(label_ids)
-
-        tokenized_inputs["labels"] = labels
-        return tokenized_inputs
-    tokenized_dataset= NER_dataset.map(
-        tokenize_and_align_labels,
-        batched=True,
-    )
     preds = []
     labels = []
     ner.to(device).eval()
     test = tokenized_dataset["test"]
-    collator = DataCollatorForTokenClassification(tokenizer=tokenizer)
-    test_dataloader = DataLoader(test, batch_size=batch_size, collate_fn=collator)
+    collator = DataCollatorForTokenClassification(tokenizer=tokenizer,)
+    test_dataloader = DataLoader(NER_dataset["test"], batch_size=batch_size, collate_fn=collator)
     with torch.no_grad():
         for batch in tqdm(test_dataloader):
             input_ids = batch["input_ids"].to(device)

@@ -12,8 +12,8 @@ from task_vectors import TaskVector
 from finetune_tasks import TokenClassificationHead
 
 def get_language_vector(base_model: str, saved_language: str):
-    lang_vector = TaskVector(pretrained_checkpoint=base_model,
-                             finetuned_checkpoint=saved_language)
+    lang_vector = TaskVector(pretrained_checkpoint=AutoModelForMaskedLM.from_pretrained(base_model),
+                             finetuned_checkpoint=AutoModelForMaskedLM.from_pretrained(saved_language, local_files_only=True))
     return lang_vector
 
 def apply_language_vector_to_model(ner_model_checkpoint: str, language_vector:TaskVector, lambda_coef: float):
@@ -117,9 +117,10 @@ if __name__ == "__main__":
         for idx, model in enumerate(language_models):
             print("language model", model)
             accuracy= test_lang_ner(ner_model, model, "language_en_done", datasets[idx], label2id)
+            print(f"accuracy: {accuracy}")  
             f.write(f"\n======language: {model.split('_')[1]}=======\n")
             f.write(f"accuracy: {accuracy}\n")
-
+            
         f.close()
 
 

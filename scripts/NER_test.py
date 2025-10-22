@@ -112,7 +112,7 @@ if __name__ == "__main__":
     )
     bert_encoder = mlm_model.bert
     ner_model = TokenClassificationHead(bert_encoder, num_labels=len(id2label))
-    load_model(ner_model, "NER_en", device="cpu")
+    load_model(ner_model, "NER_en/model.safetensors", device="cpu")
     print('ner model loaded')
     with open("output/NER.txt", "w") as f:
         for idx, model in enumerate(language_models):

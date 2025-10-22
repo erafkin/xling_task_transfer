@@ -54,7 +54,6 @@ def test_lang_ner(ner, language_model, pretrained_checkpoint, language_dataset, 
         lv = get_language_vector(pretrained_checkpoint, language_model)
         best_lambda = 1.0
         ner = apply_language_vector_to_model(ner, lv, best_lambda) # TODO find best lambda:
-    ner
     NER_dataset = load_dataset("MultiCoNER/multiconer_v2", language_dataset, trust_remote_code=True)
     tokenizer = AutoTokenizer.from_pretrained(pretrained_checkpoint)
     def tokenize_and_align_labels(examples):
@@ -92,8 +91,8 @@ def test_lang_ner(ner, language_model, pretrained_checkpoint, language_dataset, 
     with torch.no_grad():
         for batch in tqdm(test_dataloader):
             input_ids = batch["input_ids"].to(device)
-            ps = ner(input_ids)
-            ps = torch.argmax(ps, dim=-1).cpu().to_list()
+            ps = ner(input_ids)["logits"]
+            ps = torch.argmax(ps, dim=-1).cpu().tolist()
             ls = batch["labels"].cpu().tolist()
             preds += ps
             labels += ls

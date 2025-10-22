@@ -51,12 +51,8 @@ def test_lang_ner(ner_model, language_model, pretrained_checkpoint, language_dat
     if language_dataset != "English (EN)":
         lv = get_language_vector(pretrained_checkpoint, language_model)
         best_lambda = 1.0
-        ner = apply_language_vector_to_model(ner_model, lv, best_lambda) # TODO find best lambda
-    else:
-       ner = TokenClassificationHead()
-       load_model(ner, language_model)
+        ner = apply_language_vector_to_model(ner_model, lv, best_lambda) # TODO find best lambda:
 
-       ner = torch.load(pretrained_checkpoint) 
     NER_dataset = load_dataset("MultiCoNER/multiconer_v2", language_dataset, trust_remote_code=True)
     tokenizer = AutoTokenizer.from_pretrained(pretrained_checkpoint)
     id2label, label2id = get_label_mapping()
@@ -105,9 +101,11 @@ def test_lang_ner(ner_model, language_model, pretrained_checkpoint, language_dat
 if __name__ == "__main__":
     datasets = ["English (EN)", "Spanish (ES)", "Hindi (HI)"]#, "German (DE)", "Chinese (ZH)"]
     language_models = ["language_en_done", "language_es_done", "language_hi_done"]
+    ner_model = TokenClassificationHead()
+    load_model(ner_model, "NER_en")
     with open("output/NER.txt", "w") as f:
         for idx, model in enumerate(language_models):
-            p, r, f1 = test_lang_ner("NER_en", model, "language_en_done", datasets[idx])
+            p, r, f1 = test_lang_ner(ner_model, model, "language_en_done", datasets[idx])
             f.write(f"\n======language: {model.split('_')[1]}=======\n")
             f.write(f"precision: {p}\n")
             f.write(f"recall: {r}\n")

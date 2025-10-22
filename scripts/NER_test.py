@@ -1,4 +1,5 @@
 import torch
+from torch.utils.data import DataLoader
 import numpy as np
 from typing import List
 from datasets import load_dataset
@@ -80,23 +81,18 @@ def test_lang_ner(ner, language_model, pretrained_checkpoint, language_dataset, 
         tokenize_and_align_labels,
         batched=True,
     )
-    def batches(it):
-        for i in range(0, len(it), batch_size):
-            yield it[i:i+batch_size]
-
     preds = []
     labels = []
     ner.to(device).eval()
     test = tokenized_dataset["test"]
     collator = DataCollatorForTokenClassification(tokenizer=tokenizer)
+    test_dataloader = DataLoader(test, batch_size=batch_size, collate_fn=collator)
     with torch.no_grad():
-        for batch_sent in tqdm(batches(test), total=math.ceil(len(test)/batch_size), desc="Eval"):
-            tokenized_list = [{k: v[i] for k, v in batch_sent.items()} for i in range(len(batch_sent['input_ids']))]
-            batch = collator(tokenized_list)
+        for batch in tqdm(test_dataloader):
             input_ids = batch["input_ids"].to(device)
-            ps = ner(input_ids)
+            ps = ner(input_ids).logits
             ps = np.argmax(ps, axis=2)
-            ls = batch_sent["labels"]
+            ls = batch["labels"]
             preds += ps
             labels += ls
     p, r, f1 = compute_metrics(preds, labels, id2label)

@@ -95,7 +95,7 @@ def train_NER_model(model_checkpoint):
         remove_columns=NER_dataset["test"].column_names
     )
 
-    config   = AutoConfig.from_pretrained(model_checkpoint)
+    config = AutoConfig.from_pretrained(model_checkpoint)
     mlm_model = AutoModelForMaskedLM.from_pretrained(
         model_checkpoint,
         config=config,

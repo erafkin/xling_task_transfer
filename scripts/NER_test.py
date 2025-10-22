@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from typing import List
 from datasets import load_dataset
-from transformers import AutoModelForMaskedLM, AutoTokenizer
+from transformers import AutoModelForMaskedLM, AutoTokenizer, AutoConfig
 from tqdm import tqdm
 import math
 from sklearn.metrics import precision_score, recall_score, f1_score
@@ -47,15 +47,15 @@ def get_label_mapping():
     id2label = {i: tag for tag, i in label2id.items()}
     return id2label, label2id
 
-def test_lang_ner(ner_model, language_model, pretrained_checkpoint, language_dataset, lambdas: List[float]= [0.0, 0.25, 0.5, 0.75, 1.0], batch_size:int=32):
+def test_lang_ner(ner, language_model, pretrained_checkpoint, language_dataset, label2id, lambdas: List[float]= [0.0, 0.25, 0.5, 0.75, 1.0], batch_size:int=32, ):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if language_dataset != "English (EN)":
         lv = get_language_vector(pretrained_checkpoint, language_model)
         best_lambda = 1.0
-        ner = apply_language_vector_to_model(ner_model, lv, best_lambda) # TODO find best lambda:
-
+        ner = apply_language_vector_to_model(ner, lv, best_lambda) # TODO find best lambda:
+    ner
     NER_dataset = load_dataset("MultiCoNER/multiconer_v2", language_dataset, trust_remote_code=True)
     tokenizer = AutoTokenizer.from_pretrained(pretrained_checkpoint)
-    id2label, label2id = get_label_mapping()
     def tokenize_and_align_labels(examples):
         # from https://reybahl.medium.com/token-classification-in-python-with-huggingface-3fab73a6a20e
         tokenized_inputs = tokenizer(examples["tokens"], truncation=True, is_split_into_words=True)
@@ -86,11 +86,12 @@ def test_lang_ner(ner_model, language_model, pretrained_checkpoint, language_dat
 
     preds = []
     labels = []
-    ner.eval()
+    ner.to(device).eval()
 
     with torch.no_grad():
         for batch_sent in tqdm(batches(tokenized_dataset), total=math.ceil(len(tokenized_dataset)/batch_size), desc="Eval"):
-            ps = ner(**batch_sent["input_ids"])
+            input_ids = batch_sent["input_ids"].to(device)
+            ps = ner(input_ids)
             ps = np.argmax(ps, axis=2)
             ls = batch_sent["labels"]
             preds += ps
@@ -101,11 +102,20 @@ def test_lang_ner(ner_model, language_model, pretrained_checkpoint, language_dat
 if __name__ == "__main__":
     datasets = ["English (EN)", "Spanish (ES)", "Hindi (HI)"]#, "German (DE)", "Chinese (ZH)"]
     language_models = ["language_en_done", "language_es_done", "language_hi_done"]
-    ner_model = TokenClassificationHead()
+    id2label, label2id = get_label_mapping()
+    encoder_checkpoint = "language_en_done"
+    config = AutoConfig.from_pretrained(encoder_checkpoint)
+    mlm_model = AutoModelForMaskedLM.from_pretrained(
+        "language_en_done",
+        config=config,
+        dtype=torch.float32,
+    )
+    bert_encoder = mlm_model.bert
+    ner_model = TokenClassificationHead(bert_encoder, num_labels=len(id2label))
     load_model(ner_model, "NER_en")
     with open("output/NER.txt", "w") as f:
         for idx, model in enumerate(language_models):
-            p, r, f1 = test_lang_ner(ner_model, model, "language_en_done", datasets[idx])
+            p, r, f1 = test_lang_ner(ner_model, model, "language_en_done", datasets[idx], label2id)
             f.write(f"\n======language: {model.split('_')[1]}=======\n")
             f.write(f"precision: {p}\n")
             f.write(f"recall: {r}\n")

@@ -84,7 +84,7 @@ def test_lang_ner(ner, language_model, pretrained_checkpoint, language_dataset, 
     preds = []
     labels = []
     ner.to(device).eval()
-    test = tokenized_dataset["test"]
+    test = tokenized_dataset["train"]
     test.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"])
 
     collator = DataCollatorForTokenClassification(tokenizer=tokenizer)
@@ -92,7 +92,8 @@ def test_lang_ner(ner, language_model, pretrained_checkpoint, language_dataset, 
     with torch.no_grad():
         for batch in tqdm(test_dataloader):
             input_ids = batch["input_ids"].to(device)
-            ps = ner(input_ids).logits
+            ps = ner(input_ids)
+            print(ps)
             ps = torch.argmax(ps, dim=-1).cpu().tolist()
             ls = batch["labels"].cpu().tolist()
             preds += ps

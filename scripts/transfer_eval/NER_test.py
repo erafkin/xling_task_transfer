@@ -103,7 +103,7 @@ if __name__ == "__main__":
     with open("scripts/transfer_eval/NER.txt", "w") as f:
         for idx, model in enumerate(language_models):
             p, r, f1 = test_lang_ner("NER_en", model, "language_en_done", datasets[idx])
-            f.write(f"\n======language: {model.split("_")[1]}=======\n")
+            f.write(f"\n======language: {model.split('_')[1]}=======\n")
             f.write(f"precision: {p}\n")
             f.write(f"recall: {r}\n")
             f.write(f"f1: {f1}")

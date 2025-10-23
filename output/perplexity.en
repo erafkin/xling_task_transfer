@@ -1,6 +1,0 @@
-=== Perplexity result ===
-Average token‑wise loss : 1.7768
-Perplexity (exp(loss)) : 5.91
-✅ No NaNs
-✅ No Infs
-🔎 Total L2 norm of parameters: 568.81

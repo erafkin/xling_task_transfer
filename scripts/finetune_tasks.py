@@ -7,7 +7,7 @@ from transformers import (
     Trainer
 )
 import torch
-from datasets import load_dataset, DatasetDict
+from datasets import load_dataset, DatasetDict, Dataset
 import argparse
 import numpy as np
 from torch import nn
@@ -202,17 +202,17 @@ def train_POS_model(model_checkpoint, GUM_folder: str = "GUM_en"):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     train_dataset = load_conllu_data(f"{GUM_folder}/en_gum-ud-train.conllu")
     dev_dataset = load_conllu_data(f"{GUM_folder}/en_gum-ud-dev.conllu")
-    dataset = DatasetDict({"train": train_dataset, "dev": dev_dataset})
-    unique_tags = sorted({tag for ex in dataset["train"] for tag in ex.pos_tags})
+    dataset = DatasetDict({"train": Dataset.from_pandas(train_dataset), "dev": Dataset.from_pandas(dev_dataset)})
+    unique_tags = sorted({tag for ex in dataset["train"] for tag in ex["pos_tags"]})
     label2id = {tag: i for i, tag in enumerate(unique_tags)}
     id2label = {i: tag for tag, i in label2id.items()}
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
     data_collator = DataCollatorForTokenClassification(tokenizer=tokenizer)
     def tokenize_and_align_labels(examples):
         # from https://reybahl.medium.com/token-classification-in-python-with-huggingface-3fab73a6a20e
-        tokenized_inputs = tokenizer(examples.tokens, truncation=True, is_split_into_words=True)
+        tokenized_inputs = tokenizer(examples["tokens"], truncation=True, is_split_into_words=True)
         labels = []
-        for i, label in enumerate(examples.pos_tags):
+        for i, label in enumerate(examples["pos_tags"]):
             word_ids = tokenized_inputs.word_ids(batch_index=i)  # Map tokens to their respective word.
             previous_word_idx = None
             label_ids = []
@@ -251,7 +251,7 @@ def train_POS_model(model_checkpoint, GUM_folder: str = "GUM_en"):
     tokenized_dataset= dataset.map(
         tokenize_and_align_labels,
         batched=True,
-        remove_columns=dataset["train"].column_names
+        remove_columns=["tokens", "pos_tags", "dep_rel", "dep_head"]
     )
 
     config = AutoConfig.from_pretrained(model_checkpoint)

@@ -51,7 +51,10 @@ def load_conllu_data(filepath) -> pd.DataFrame:
             line = line.strip()
             if not line:  # Empty line indicates end of a sentence
                 if current_sentence:
-                    sentences.append(current_sentence)
+                    sentences.append([[t["FORM"] for t in current_sentence],
+                          [t["UPOS"] for t in current_sentence],
+                          [t["DEPREL"] for t in current_sentence],
+                          [t["HEAD"] for t in current_sentence]])
                     current_sentence = []
                 continue
 
@@ -85,7 +88,8 @@ def load_conllu_data(filepath) -> pd.DataFrame:
                           [t["UPOS"] for t in current_sentence],
                           [t["DEPREL"] for t in current_sentence],
                           [t["HEAD"] for t in current_sentence]])
-    df = pd.DataFrame(sentences, columns=["tokens", "pos_tags", "dep_rel", "dep_head"], index=False)
+    rows = []
+    df = pd.DataFrame(sentences, columns=["tokens", "pos_tags", "dep_rel", "dep_head"])
     return df
 
 

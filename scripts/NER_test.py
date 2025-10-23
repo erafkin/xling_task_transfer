@@ -1,12 +1,9 @@
 import torch
 from torch.utils.data import DataLoader
-import numpy as np
 from typing import List
 from datasets import load_dataset
 from transformers import AutoModelForMaskedLM, AutoTokenizer, AutoConfig, DataCollatorForTokenClassification
 from tqdm import tqdm
-import math
-from sklearn.metrics import precision_score, recall_score, f1_score
 from safetensors.torch import load_model
 from task_vectors import TaskVector
 from finetune_tasks import TokenClassificationHead

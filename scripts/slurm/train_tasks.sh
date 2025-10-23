@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name="rafkin_train_lang"
+#SBATCH --job-name="pos"
 #SBATCH --nodes=1
 #SBATCH --partition=spot
 #SBATCH --output="%x.o%j"
@@ -18,4 +18,4 @@ python3.11 -m venv venv
 source venv/bin/activate
 pip3 install -r requirements.txt
 python3.11 --version
-python3.11 ./scripts/finetune_tasks.py ner
+python3.11 ./scripts/finetune_tasks.py pos

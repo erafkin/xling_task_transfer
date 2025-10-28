@@ -2,7 +2,7 @@ import torch
 from torch.utils.data import DataLoader
 from typing import List
 from datasets import load_dataset
-from transformers import AutoModelForSequenceClassification, AutoModelForMaskedLM, AutoTokenizer, AutoConfig, DataCollatorForTokenClassification
+from transformers import AutoModelForSequenceClassification, AutoModelForMaskedLM, AutoTokenizer, DataCollatorWithPadding, AutoConfig, DataCollatorForTokenClassification
 from tqdm import tqdm
 from safetensors.torch import load_model
 from task_vectors import TaskVector
@@ -13,15 +13,14 @@ def get_language_vector(base_model: str, saved_language: str):
                              finetuned_model=AutoModelForMaskedLM.from_pretrained(saved_language, local_files_only=True))
     return lang_vector
 
-def apply_language_vector_to_model(ner_model_checkpoint: str, language_vector:TaskVector, lambda_coef: float):
-    ner_model = language_vector.apply_to(ner_model_checkpoint, scaling_coef=lambda_coef)
-    return ner_model
+def apply_language_vector_to_model(nli_model_checkpoint: str, language_vector:TaskVector, lambda_coef: float):
+    nli_model = language_vector.apply_to(nli_model_checkpoint, scaling_coef=lambda_coef)
+    return nli_model
 
 def compute_metrics(predictions, labels):
     # Simple accuracy calculation
     total = sum(len(pred) for pred in predictions)
-    correct = sum(1 for pred, lab in zip(predictions, def compute_metrics(predictions, labels):
-) for p, l in zip(pred, lab) if p == l)
+    correct = sum(1 for pred, lab in zip(predictions,labels) for p, l in zip(pred, lab) if p == l)
     accuracy = correct / total if total > 0 else 0
     return accuracy
 
@@ -29,63 +28,55 @@ def lambda_search(eval_set, coef):
     ...
 
 def get_label_mapping():
-    NER_dataset = load_dataset("MultiCoNER/multiconer_v2", "English (EN)", trust_remote_code=True)
-    # Build a dense mapping 0 … C‑1
-    unique_tags = sorted({tag for ex in NER_dataset["test"] for tag in ex["ner_tags"]})
+    NLI_dataset = load_dataset("facebook/xnli", "en", trust_remote_code=True)
+    unique_tags = sorted({ex["label"] for ex in NLI_dataset["train"]})
     label2id = {tag: i for i, tag in enumerate(unique_tags)}
     id2label = {i: tag for tag, i in label2id.items()}
     return id2label, label2id
 
-def test_lang_ner(ner, language_model, pretrained_checkpoint, language_dataset, label2id, lambdas: List[float]= [0.0, 0.25, 0.5, 0.75, 1.0], batch_size:int=32, ):
+def test_lang_nli(nli, language_model, pretrained_checkpoint, language_dataset, label2id, lambdas: List[float]= [0.0, 0.25, 0.5, 0.75, 1.0], batch_size:int=32, ):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    if language_dataset != "English (EN)":
+    if language_dataset != "en":
         lv = get_language_vector(pretrained_checkpoint, language_model)
         best_lambda = 0.0
-        ner = apply_language_vector_to_model(ner, lv, best_lambda) # TODO find best lambda:
-    NER_dataset = load_dataset("MultiCoNER/multiconer_v2", language_dataset, trust_remote_code=True)
+        nli = apply_language_vector_to_model(nli, lv, best_lambda) # TODO find best lambda:
+    NLI_dataset = load_dataset("facebook/xnli", language_dataset, trust_remote_code=True)
     tokenizer = AutoTokenizer.from_pretrained(pretrained_checkpoint)
-    def tokenize_and_align_labels(examples):
-        # from https://reybahl.medium.com/token-classification-in-python-with-huggingface-3fab73a6a20e
-        tokenized_inputs = tokenizer(examples["tokens"], truncation=True, is_split_into_words=True)
-        labels = []
-        for i, label in enumerate(examples[f"ner_tags"]):
-            word_ids = tokenized_inputs.word_ids(batch_index=i)  # Map tokens to their respective word.
-            previous_word_idx = None
-            label_ids = []
-            for word_idx in word_ids:  # Set the special tokens to -100.
-                if word_idx is None:
-                    label_ids.append(-100)
-                elif word_idx != previous_word_idx:  # Only label the first token of a given word.
-                    label_ids.append(label2id[label[word_idx]])
-                else:
-                    label_ids.append(-100)
-                previous_word_idx = word_idx
-            labels.append(label_ids)
-
-        tokenized_inputs["labels"] = labels
-        return tokenized_inputs
-    tokenized_dataset= NER_dataset.map(
-        tokenize_and_align_labels,
+    def preprocess(examples):
+        inputs = [examples[column] for column in ["premise", "hypothesis"]]
+        tokenized_examples = tokenizer(
+            *inputs,
+            padding=True,
+            max_length=512,
+            truncation=True,
+        )
+        tokenized_examples['label'] = [
+            label2id[str(label)]
+            for label in examples['label']
+        ]
+        return tokenized_examples
+    tokenized_dataset= NLI_dataset.map(
+        preprocess,
         batched=True,
     )
     preds = []
     labels = []
-    ner.to(device).eval()
-    test = tokenized_dataset["train"]
+    nli.to(device).eval()
+    test = tokenized_dataset["test"]
     test.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"])
 
-    collator = DataCollatorForTokenClassification(tokenizer=tokenizer)
+    collator = DataCollatorWithPadding(tokenizer=tokenizer)
     test_dataloader = DataLoader(test, batch_size=batch_size, collate_fn=collator)
     with torch.no_grad():
         for batch in tqdm(test_dataloader):
             input_ids = batch["input_ids"].to(device)
-            ps = ner(input_ids)["logits"]
+            ps = nli(input_ids)["logits"]
             ps = torch.argmax(ps, dim=-1).cpu().tolist()
             ls = batch["labels"].cpu().tolist()
             preds += ps
             labels += ls
     accuracy = compute_metrics(preds, labels)
-    ner.to("cpu")
+    nli.to("cpu")
     return accuracy
 
 if __name__ == "__main__":
@@ -100,7 +91,7 @@ if __name__ == "__main__":
     with open("output/NLI_0.0.txt", "w") as f:
         for idx, lang_model in enumerate(language_models):
             print("language model", model)
-            accuracy= test_lang_ner(model, lang_model, "bert-multilingual/language_en_done", datasets[idx], label2id)
+            accuracy= test_lang_nli(model, lang_model, "bert-multilingual/language_en_done", datasets[idx], label2id)
             print(f"accuracy: {accuracy}")  
             f.write(f"\n======language: {lang_model.split('_')[1]}=======\n")
             f.write(f"accuracy: {accuracy}\n")

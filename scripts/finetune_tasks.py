@@ -310,10 +310,9 @@ def train_NLI_model(model_checkpoint):
     # Following Ansell: https://github.com/cambridgeltl/composable-sft/blob/main/examples/text-classification/run_text_classification.py
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
+    tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, local_files_only=True)
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
     NLI_dataset = load_dataset("facebook/xnli", "en", trust_remote_code=True)
-    # Build a dense mapping 0 … C‑1
     unique_tags = sorted({ex["label"] for ex in NLI_dataset["train"]})
     label2id = {tag: i for i, tag in enumerate(unique_tags)}
     id2label = {i: tag for tag, i in label2id.items()}
@@ -345,10 +344,8 @@ def train_NLI_model(model_checkpoint):
         remove_columns=NLI_dataset["train"].column_names
     )
 
-    config = AutoConfig.from_pretrained(model_checkpoint)
     model = AutoModelForSequenceClassification.from_pretrained(
         model_checkpoint,
-        config=config,
         dtype=torch.float32,
         num_labels=len(id2label),
         local_files_only=True

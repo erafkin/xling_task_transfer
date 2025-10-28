@@ -14,6 +14,7 @@ import argparse
 import numpy as np
 from torch import nn
 import pandas as pd
+from pathlib import Path
 
 class TokenClassificationHead(nn.Module):
     def __init__(self, encoder: nn.Module, num_labels: int, dropout: float = 0.1):
@@ -310,7 +311,7 @@ def train_NLI_model(model_checkpoint):
     # Following Ansell: https://github.com/cambridgeltl/composable-sft/blob/main/examples/text-classification/run_text_classification.py
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, local_files_only=True)
+    tokenizer = AutoTokenizer.from_pretrained(Path(model_checkpoint), local_files_only=True)
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
     NLI_dataset = load_dataset("facebook/xnli", "en", trust_remote_code=True)
     unique_tags = sorted({ex["label"] for ex in NLI_dataset["train"]})
@@ -345,7 +346,7 @@ def train_NLI_model(model_checkpoint):
     )
 
     model = AutoModelForSequenceClassification.from_pretrained(
-        model_checkpoint,
+        Path(model_checkpoint),
         dtype=torch.float32,
         num_labels=len(id2label),
         local_files_only=True

@@ -51,7 +51,7 @@ def test_lang_nli(nli, language_model, pretrained_checkpoint, language_dataset, 
             truncation=True,
         )
         tokenized_examples['label'] = [
-            label2id[str(label)]
+            label2id[label]
             for label in examples['label']
         ]
         return tokenized_examples

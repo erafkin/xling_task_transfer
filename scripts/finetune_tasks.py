@@ -351,6 +351,7 @@ def train_NLI_model(model_checkpoint):
         config=config,
         dtype=torch.float32,
         num_labels=len(id2label),
+        local_files_only=True
     ).to(device)
 
     def set_trainable(mod: nn.Module, train_encoder: bool = False):

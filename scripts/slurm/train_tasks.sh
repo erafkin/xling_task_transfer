@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name="pos"
+#SBATCH --job-name="nli"
 #SBATCH --nodes=1
 #SBATCH --partition=spot
 #SBATCH --output="%x.o%j"

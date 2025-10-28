@@ -396,6 +396,6 @@ if __name__ == "__main__":
     elif args.task == "pos":
         train_POS_model("bert-multlingual/language_en_done")
     elif args.task == "nli":
-        train_NLI_model("bert-multlingual/language_en_done")
+        train_NLI_model("/home/epr41/xling_task_transfer/bert-multlingual/language_en_done")
     else:
         print("no task: ", args.task)

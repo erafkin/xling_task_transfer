@@ -395,10 +395,10 @@ if __name__ == "__main__":
     parser.add_argument("task", help="the task to train an english model on")
     args = parser.parse_args()
     if args.task == "ner":
-        train_NER_model("bert-multlingual/language_en_done")
+        train_NER_model("bert-multilingual/language_en_done")
     elif args.task == "pos":
-        train_POS_model("bert-multlingual/language_en_done")
+        train_POS_model("bert-multilingual/language_en_done")
     elif args.task == "nli":
-        train_NLI_model("local:/home/epr41/xling_task_transfer/bert-multlingual/language_en_done")
+        train_NLI_model("./bert-multilingual/language_en_done")
     else:
         print("no task: ", args.task)

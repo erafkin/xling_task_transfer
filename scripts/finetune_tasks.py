@@ -326,7 +326,7 @@ def train_NLI_model(model_checkpoint):
             truncation=True,
         )
         tokenized_examples['label'] = [
-            label2id[str(label)]
+            label2id[label]
             for label in examples['label']
         ]
         return tokenized_examples

@@ -1,7 +1,9 @@
 from transformers import (
     AutoModelForMaskedLM, 
     AutoTokenizer, 
+    AutoModelForSequenceClassification,
     DataCollatorForTokenClassification,
+    DataCollatorWithPadding,
     TrainingArguments, 
     AutoConfig,
     Trainer
@@ -37,7 +39,7 @@ class TokenClassificationHead(nn.Module):
             loss = loss_fct(logits.view(-1, logits.size(-1)), labels.view(-1))
 
         return {"loss": loss, "logits": logits}
-
+    
 def load_conllu_data(filepath) -> pd.DataFrame:
     """
     Loads data from a CoNLL-U file and structures it into a list of sentences,
@@ -303,13 +305,99 @@ def train_POS_model(model_checkpoint, GUM_folder: str = "GUM_en"):
     trainer.train()
     trainer.save_model(f"POS_en")
 
+
+def train_NLI_model(model_checkpoint):
+    # Following Ansell: https://github.com/cambridgeltl/composable-sft/blob/main/examples/text-classification/run_text_classification.py
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
+    data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
+    NLI_dataset = load_dataset("facebook/xnli", "en", trust_remote_code=True)
+    # Build a dense mapping 0 … C‑1
+    unique_tags = sorted({ex["label"] for ex in NLI_dataset["train"]})
+    label2id = {tag: i for i, tag in enumerate(unique_tags)}
+    id2label = {i: tag for tag, i in label2id.items()}
+    def preprocess(examples):
+        inputs = [examples[column] for column in ["premise", "hypothesis"]]
+        tokenized_examples = tokenizer(
+            *inputs,
+            padding=True,
+            max_length=512,
+            truncation=True,
+        )
+        tokenized_examples['label'] = [
+            label2id[str(label)]
+            for label in examples['label']
+        ]
+        return tokenized_examples
+    def compute_metrics(eval_pred):
+        predictions, labels = eval_pred
+        predictions = np.argmax(predictions, axis=2)
+        # Simple accuracy calculation
+        total = sum(len(pred) for pred in predictions)
+        correct = sum(1 for pred, lab in zip(predictions, labels) for p, l in zip(pred, lab) if p == l)
+        accuracy = correct / total if total > 0 else 0
+        return {"accuracy": accuracy}
+
+    tokenized_dataset= NLI_dataset.map(
+        preprocess,
+        batched=True,
+        remove_columns=NLI_dataset["train"].column_names
+    )
+
+    config = AutoConfig.from_pretrained(model_checkpoint)
+    model = AutoModelForSequenceClassification.from_pretrained(
+        model_checkpoint,
+        config=config,
+        dtype=torch.float32,
+        num_labels=len(id2label),
+    ).to(device)
+
+    def set_trainable(mod: nn.Module, train_encoder: bool = False):
+        for n, p in mod.named_parameters():
+            if "classifier" in n:
+                p.requires_grad = True
+            else:
+                p.requires_grad = train_encoder
+        mod.train()
+
+    set_trainable(model, train_encoder=True) 
+
+    training_args = TrainingArguments(
+            output_dir=f"NLI_en",
+            eval_strategy="epoch",
+            learning_rate=2e-5,
+            num_train_epochs=3, 
+            weight_decay=0.01,
+            per_device_train_batch_size=8,
+            per_device_eval_batch_size=8,
+            push_to_hub=False,
+            save_strategy="no",
+            fp16=False
+        )    
+    trainer = Trainer(
+            model=model,
+            args=training_args,
+            train_dataset=tokenized_dataset["train"],
+            eval_dataset=tokenized_dataset["validation"],
+            data_collator=data_collator,
+            tokenizer=tokenizer,
+            compute_metrics=compute_metrics,
+        )
+
+    trainer.train()
+    trainer.save_model(f"NLI_en")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="A simple script to demonstrate argument parsing.")
     parser.add_argument("task", help="the task to train an english model on")
     args = parser.parse_args()
     if args.task == "ner":
-        train_NER_model("language_en_done")
+        train_NER_model("bert-multlingual/language_en_done")
     elif args.task == "pos":
-        train_POS_model("language_en_done")
+        train_POS_model("bert-multlingual/language_en_done")
+    elif args.task == "nli":
+        train_NLI_model("bert-multlingual/language_en_done")
     else:
         print("no task: ", args.task)

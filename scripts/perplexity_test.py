@@ -119,5 +119,5 @@ if __name__ == "__main__":
                 file.write(f" Infs in: {', '.join(inf)}\n")
             else:
                 file.write("No Infs")
-            file.write(f"🔎 Total L2 norm of parameters: {total_norm:.2f}\n")
+            file.write(f"Total L2 norm of parameters: {total_norm:.2f}\n")
     file.close()

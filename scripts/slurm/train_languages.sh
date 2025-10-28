@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name="rafkin_train_lang"
 #SBATCH --nodes=1
-#SBATCH --partition=spot
+#SBATCH --partition=base
 #SBATCH --output="%x.o%j"
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1

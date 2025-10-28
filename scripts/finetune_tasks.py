@@ -156,7 +156,7 @@ def train_NER_model(model_checkpoint):
         dtype=torch.float32,
     ).to(device)
 
-    bert_encoder = mlm_model.bert
+    bert_encoder = mlm_model.roberta
     model = TokenClassificationHead(
         encoder=bert_encoder,
         num_labels=len(id2label),
@@ -261,7 +261,7 @@ def train_POS_model(model_checkpoint, GUM_folder: str = "GUM_en"):
         dtype=torch.float32,
     ).to(device)
 
-    bert_encoder = mlm_model.bert
+    bert_encoder = mlm_model.roberta
     model = TokenClassificationHead(
         encoder=bert_encoder,
         num_labels=len(id2label),

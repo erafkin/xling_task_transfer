@@ -107,7 +107,7 @@ if __name__ == "__main__":
         config=config,
         dtype=torch.float32,
     )
-    bert_encoder = mlm_model.bert
+    bert_encoder = mlm_model.roberta
     ner_model = TokenClassificationHead(bert_encoder, num_labels=len(id2label))
     load_model(ner_model, "NER_en/model.safetensors", device="cpu")
     print('ner model loaded')

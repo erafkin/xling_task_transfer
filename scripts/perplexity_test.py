@@ -80,7 +80,7 @@ def eval_model(model_dir, sentences, batch_size: int = 32, max_len: int = 512):
 if __name__ == "__main__":
     models = ["language_en_done", "language_es_done", "language_hi_done", "language_de_done", "language_zh_done"]
 
-    base_model = "google-bert/bert-base-multilingual-uncased"
+    base_model = "FacebookAI/xlm-roberta-base"
     with open("perplexity_eval_data/summary.txt", "w") as file:
         for model in models:
             language = model.split("_")[1]

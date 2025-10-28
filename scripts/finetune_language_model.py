@@ -8,9 +8,9 @@ from transformers import (
 import torch
 from datasets import load_dataset, Dataset
 from tqdm import tqdm
-
+import os
 def train_language_model(language: str, mlm_prob: float = 0.15, num_samples:int = 500000, batch_size:int = 32):
-    model_checkpoint = "google-bert/bert-base-multilingual-uncased"
+    model_checkpoint = "FacebookAI/xlm-roberta-base"
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
     def preprocess_function(examples):
         return tokenizer(examples["text"], padding="max_length", truncation=True, max_length=128)
@@ -37,8 +37,8 @@ def train_language_model(language: str, mlm_prob: float = 0.15, num_samples:int 
             output_dir=f"language_{language}",
             eval_strategy="no",
             save_strategy="steps",
-            save_steps=500,
-            eval_steps=500,
+            save_steps=1000,
+            eval_steps=1000,
             learning_rate=2e-5,
             per_device_train_batch_size=batch_size,
             max_steps=max_steps,
@@ -47,7 +47,7 @@ def train_language_model(language: str, mlm_prob: float = 0.15, num_samples:int 
             optim="adamw_torch",
             weight_decay=0.01,
             push_to_hub=False,
-            logging_steps=100,
+            logging_steps=1000,
             gradient_accumulation_steps=2,
             fp16=True,
             report_to=None,
@@ -70,11 +70,12 @@ def train_language_model(language: str, mlm_prob: float = 0.15, num_samples:int 
             tokenizer=tokenizer,
         )
     trainer.train()
-    trainer.save_model(f"language_{language}")
+    trainer.save_model(f"language_{language}/final")
 
 if __name__ == "__main__":
-    #languages = ["hi", "es", "de", "zh"]
-    languages = ["es", "de", "zh"]
+    languages = ["en", "hi", "es", "de", "zh"]
+    #languages = ["es", "de", "zh"]
     for language in tqdm(languages):
-        train_language_model(language=language)
+        if not os.path.exists(f"language_{language}/final"):
+            train_language_model(language=language, num_samples=1000000)
 

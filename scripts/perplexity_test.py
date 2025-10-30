@@ -78,10 +78,10 @@ def eval_model(model_dir, sentences, batch_size: int = 32, max_len: int = 512):
     return avg_loss, ppl, nan, inf, total_norm
 
 if __name__ == "__main__":
-    models = ["language_en_done", "language_es_done", "language_hi_done", "language_de_done", "language_zh_done"]
+    models = ["language_en", "language_es", "language_hi", "language_de", "language_zh"]
 
     base_model = "FacebookAI/xlm-roberta-base"
-    with open("perplexity_eval_data/summary.txt", "w") as file:
+    with open("perplexity_eval_data/summary_xlm-r.txt", "w") as file:
         for model in models:
             language = model.split("_")[1]
             with open(f"perplexity_eval_data/{language}.txt", "r") as f:
@@ -106,7 +106,7 @@ if __name__ == "__main__":
             else:
                 file.write("No Infs\n")
             file.write(f"🔎 Total L2 norm of parameters: {total_norm:.2f}\n")
-            avg_loss, ppl, nan, inf, total_norm = eval_model(model, sentences=sentences)
+            avg_loss, ppl, nan, inf, total_norm = eval_model(f"{model}/final", sentences=sentences)
             file.write("\n=== Perplexity result ===\n")
             file.write(f"Model: {model}\n")
             file.write(f"Average token‑wise loss : {avg_loss:.4f}\n")

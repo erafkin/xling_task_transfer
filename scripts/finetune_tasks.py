@@ -333,8 +333,8 @@ def train_NLI_model(model_checkpoint):
         predictions, labels = eval_pred
         predictions = np.argmax(predictions, axis=1)
         # Simple accuracy calculation
-        total = sum(len(pred) for pred in predictions)
-        correct = sum(1 for pred, lab in zip(predictions, labels) for p, l in zip(pred, lab) if p == l)
+        total = len(predictions)
+        correct = sum(1 for pred, lab in zip(predictions, labels) if pred == lab)
         accuracy = correct / total if total > 0 else 0
         return {"accuracy": accuracy}
 

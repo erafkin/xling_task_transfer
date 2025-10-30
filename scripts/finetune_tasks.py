@@ -331,7 +331,7 @@ def train_NLI_model(model_checkpoint):
         return tokenized_examples
     def compute_metrics(eval_pred):
         predictions, labels = eval_pred
-        predictions = np.argmax(predictions, axis=2)
+        predictions = np.argmax(predictions, axis=1)
         # Simple accuracy calculation
         total = sum(len(pred) for pred in predictions)
         correct = sum(1 for pred, lab in zip(predictions, labels) for p, l in zip(pred, lab) if p == l)

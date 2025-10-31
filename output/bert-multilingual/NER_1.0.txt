@@ -3,13 +3,13 @@
 accuracy: 0.948954788526981
 
 ======language: es=======
-accuracy: 0.9356845525733027
+accuracy: 0.9356198680435593
 
 ======language: hi=======
-accuracy: 0.8913605177668795
+accuracy: 0.8910657619125265
 
 ======language: de=======
-accuracy: 0.8973366596992786
+accuracy: 0.9030948688557751
 
 ======language: zh=======
-accuracy: 0.7536094395088068
+accuracy: 0.7694844588487252

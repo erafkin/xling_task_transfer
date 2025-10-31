@@ -19,6 +19,7 @@ def apply_language_vector_to_model(nli_model_checkpoint: str, language_vector:Ta
 
 def compute_metrics(predictions, labels):
     # Simple accuracy calculation
+    assert(len(predictions) == len(labels))
     total = len(predictions)
     correct = sum(1 for pred, lab in zip(predictions,labels) if pred == lab)
     accuracy = correct / total if total > 0 else 0
@@ -70,8 +71,8 @@ def test_lang_nli(nli, language_model, pretrained_checkpoint, language_dataset, 
     with torch.no_grad():
         for batch in tqdm(test_dataloader):
             input_ids = batch["input_ids"].to(device)
-            ps = nli(input_ids)["logits"]
-            ps = torch.argmax(ps, dim=1).cpu().tolist()
+            ps = nli(input_ids)
+            ps = ps.logits.argmax(1).cpu().tolist()
             ls = batch["labels"].cpu().tolist()
             preds += ps
             labels += ls
@@ -87,11 +88,12 @@ if __name__ == "__main__":
                        "bert-multilingual/language_de_done", 
                        "bert-multilingual/language_zh_done"]
     id2label, label2id = get_label_mapping()
-    model = AutoModelForSequenceClassification.from_pretrained("NLI_en", local_files_only=True, dtype=torch.float32)
+    print(label2id)
+    model = AutoModelForSequenceClassification.from_pretrained("bert-multilingual/NLI_en", local_files_only=True, dtype=torch.float32)
     with open("output/NLI_1.0.txt", "w") as f:
         for idx, lang_model in enumerate(language_models):
             print("language model", datasets[idx])
-            accuracy= test_lang_nli(model, lang_model, "bert-multilingual/language_en_done", datasets[idx], label2id)
+            accuracy= test_lang_nli(model, lang_model, "google-bert/bert-base-multilingual-uncased", datasets[idx], label2id)
             print(f"accuracy: {accuracy}")  
             f.write(f"\n======language: {lang_model.split('_')[1]}=======\n")
             f.write(f"accuracy: {accuracy}\n")

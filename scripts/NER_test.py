@@ -48,7 +48,7 @@ def test_lang_ner(ner, language_model, pretrained_checkpoint, language_dataset, 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if language_dataset != "English (EN)":
         lv = get_language_vector(pretrained_checkpoint, language_model)
-        best_lambda = 0.0
+        best_lambda = 1.0
         ner = apply_language_vector_to_model(ner, lv, best_lambda) # TODO find best lambda:
     NER_dataset = load_dataset("MultiCoNER/multiconer_v2", language_dataset, trust_remote_code=True)
     tokenizer = AutoTokenizer.from_pretrained(pretrained_checkpoint)
@@ -98,23 +98,23 @@ def test_lang_ner(ner, language_model, pretrained_checkpoint, language_dataset, 
 
 if __name__ == "__main__":
     datasets = ["English (EN)", "Spanish (ES)", "Hindi (HI)", "German (DE)", "Chinese (ZH)"]
-    language_models = ["language_en_done", "language_es_done", "language_hi_done", "language_de_done", "language_zh_done"]
+    language_models = ["bert-multilingual/language_en_done", "bert-multilingual/language_es_done", "bert-multilingual/language_hi_done", "bert-multilingual/language_de_done", "bert-multilingual/language_zh_done"]
     id2label, label2id = get_label_mapping()
-    encoder_checkpoint = "language_en_done"
+    encoder_checkpoint = "bert-multilingual/language_en_done"
     config = AutoConfig.from_pretrained(encoder_checkpoint)
     mlm_model = AutoModelForMaskedLM.from_pretrained(
-        "language_en_done",
+        "bert-multilingual/language_en_done",
         config=config,
         dtype=torch.float32,
     )
-    bert_encoder = mlm_model.roberta
+    bert_encoder = mlm_model.bert
     ner_model = TokenClassificationHead(bert_encoder, num_labels=len(id2label))
-    load_model(ner_model, "NER_en/model.safetensors", device="cpu")
+    load_model(ner_model, "bert-multilingual/NER_en/model.safetensors", device="cpu")
     print('ner model loaded')
-    with open("output/NER_0.0.txt", "w") as f:
+    with open("output/NER_1.0.txt", "w") as f:
         for idx, model in enumerate(language_models):
             print("language model", model)
-            accuracy= test_lang_ner(ner_model, model, "language_en_done", datasets[idx], label2id)
+            accuracy= test_lang_ner(ner_model, model, "google-bert/bert-base-multilingual-uncased", datasets[idx], label2id)
             print(f"accuracy: {accuracy}")  
             f.write(f"\n======language: {model.split('_')[1]}=======\n")
             f.write(f"accuracy: {accuracy}\n")

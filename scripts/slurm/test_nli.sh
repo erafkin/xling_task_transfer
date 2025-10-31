@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name="pos"
+#SBATCH --job-name="nli_test"
 #SBATCH --nodes=1
-#SBATCH --partition=base
+#SBATCH --partition=spot
 #SBATCH --output="%x.o%j"
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1
@@ -18,4 +18,4 @@ python3.11 -m venv venv
 source venv/bin/activate
 pip3 install -r requirements.txt
 python3.11 --version
-python3.11 ./scripts/finetune_tasks.py ner
+python3.11 scripts/NLI_test.py 

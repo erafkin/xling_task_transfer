@@ -7,7 +7,7 @@ from tqdm import tqdm
 from safetensors.torch import load_model
 from task_vectors import TaskVector
 from finetune_tasks import TokenClassificationHead
-
+import numpy as np
 def get_language_vector(base_model: str, saved_language: str):
     lang_vector = TaskVector(pretrained_model=AutoModelForMaskedLM.from_pretrained(base_model),
                              finetuned_model=AutoModelForMaskedLM.from_pretrained(saved_language, local_files_only=True))
@@ -19,8 +19,8 @@ def apply_language_vector_to_model(nli_model_checkpoint: str, language_vector:Ta
 
 def compute_metrics(predictions, labels):
     # Simple accuracy calculation
-    total = sum(len(pred) for pred in predictions)
-    correct = sum(1 for pred, lab in zip(predictions,labels) for p, l in zip(pred, lab) if p == l)
+    total = len(predictions)
+    correct = sum(1 for pred, lab in zip(predictions,labels) if pred == lab)
     accuracy = correct / total if total > 0 else 0
     return accuracy
 
@@ -63,7 +63,7 @@ def test_lang_nli(nli, language_model, pretrained_checkpoint, language_dataset, 
     labels = []
     nli.to(device).eval()
     test = tokenized_dataset["test"]
-    test.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"])
+    test.set_format(type="torch", columns=["input_ids", "attention_mask", "label"])
 
     collator = DataCollatorWithPadding(tokenizer=tokenizer)
     test_dataloader = DataLoader(test, batch_size=batch_size, collate_fn=collator)
@@ -71,7 +71,7 @@ def test_lang_nli(nli, language_model, pretrained_checkpoint, language_dataset, 
         for batch in tqdm(test_dataloader):
             input_ids = batch["input_ids"].to(device)
             ps = nli(input_ids)["logits"]
-            ps = torch.argmax(ps, dim=-1).cpu().tolist()
+            ps = torch.argmax(ps, dim=1).cpu().tolist()
             ls = batch["labels"].cpu().tolist()
             preds += ps
             labels += ls

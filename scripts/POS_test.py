@@ -48,7 +48,7 @@ def test_lang_pos(ner, language_model, pretrained_checkpoint, language_folder, l
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if language_folder != "UD_English-PUD/en_pud-ud-test.conllu":
         lv = get_language_vector(pretrained_checkpoint, language_model)
-        best_lambda = 1.0
+        best_lambda = 0.0
         ner = apply_language_vector_to_model(ner, lv, best_lambda) # TODO find best lambda:
     test_dataset = load_conllu_data(language_folder)
     test_dataset = Dataset.from_pandas(test_dataset)
@@ -131,7 +131,7 @@ if __name__ == "__main__":
     pos_model = TokenClassificationHead(encoder, num_labels=len(id2label))
     load_model(pos_model, f"{prefix}/POS_en/model.safetensors", device="cpu")
     print('pos model loaded')
-    with open("output/POS_1.0.txt", "w") as f:
+    with open("output/POS_0.0.txt", "w") as f:
         for idx, model in enumerate(language_models):
             print("language model", model)
             accuracy= test_lang_pos(pos_model, model, base_model, datasets[idx], label2id)

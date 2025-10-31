@@ -35,11 +35,11 @@ def get_label_mapping():
     id2label = {i: tag for tag, i in label2id.items()}
     return id2label, label2id
 
-def test_lang_nli(nli, language_model, pretrained_checkpoint, language_dataset, label2id, lambdas: List[float]= [0.0, 0.25, 0.5, 0.75, 1.0], batch_size:int=32, ):
+def test_lang_nli(nli, language_model, pretrained_checkpoint, language_dataset, label2id, lambdas: List[float]= [0.0, 0.25, 0.5, 0.75, 1.0], batch_size:int=8, ):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if language_dataset != "en":
         lv = get_language_vector(pretrained_checkpoint, language_model)
-        best_lambda = 1.0
+        best_lambda = 0.0
         nli = apply_language_vector_to_model(nli, lv, best_lambda) # TODO find best lambda:
     NLI_dataset = load_dataset("facebook/xnli", language_dataset, trust_remote_code=True)
     tokenizer = AutoTokenizer.from_pretrained(pretrained_checkpoint)
@@ -51,10 +51,7 @@ def test_lang_nli(nli, language_model, pretrained_checkpoint, language_dataset, 
             max_length=512,
             truncation=True,
         )
-        tokenized_examples['label'] = [
-            label2id[label]
-            for label in examples['label']
-        ]
+        tokenized_examples['label'] = examples["label"]
         return tokenized_examples
     tokenized_dataset= NLI_dataset.map(
         preprocess,
@@ -90,7 +87,7 @@ if __name__ == "__main__":
     id2label, label2id = get_label_mapping()
     print(label2id)
     model = AutoModelForSequenceClassification.from_pretrained("bert-multilingual/NLI_en", local_files_only=True, dtype=torch.float32)
-    with open("output/NLI_1.0.txt", "w") as f:
+    with open("output/NLI_0.0.txt", "w") as f:
         for idx, lang_model in enumerate(language_models):
             print("language model", datasets[idx])
             accuracy= test_lang_nli(model, lang_model, "google-bert/bert-base-multilingual-uncased", datasets[idx], label2id)

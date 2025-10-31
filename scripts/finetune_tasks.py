@@ -347,6 +347,8 @@ def train_NLI_model(model_checkpoint):
     model = AutoModelForSequenceClassification.from_pretrained(
         model_checkpoint,
         dtype=torch.float32,
+        label2id=label2id,
+        id2label=id2label,
         num_labels=len(id2label),
         local_files_only=True,
     ).to(device)

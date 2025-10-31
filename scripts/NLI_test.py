@@ -37,7 +37,9 @@ def get_label_mapping():
 
 def test_lang_nli(nli, language_model, pretrained_checkpoint, language_dataset, label2id, lambdas: List[float]= [0.0, 0.25, 0.5, 0.75, 1.0], batch_size:int=8, ):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("lang dataset ", language_dataset)
     if language_dataset != "en":
+        print("getting lang vector and applying to nli model")
         lv = get_language_vector(pretrained_checkpoint, language_model)
         best_lambda = 0.0
         nli = apply_language_vector_to_model(nli, lv, best_lambda) # TODO find best lambda:
@@ -69,7 +71,7 @@ def test_lang_nli(nli, language_model, pretrained_checkpoint, language_dataset, 
         for batch in tqdm(test_dataloader):
             input_ids = batch["input_ids"].to(device)
             ps = nli(input_ids)
-            ps = ps.logits.argmax(1).cpu().tolist()
+            ps = torch.argmax(ps["logits"], 1).tolist()
             ls = batch["labels"].cpu().tolist()
             preds += ps
             labels += ls
@@ -85,8 +87,8 @@ if __name__ == "__main__":
                        "bert-multilingual/language_de_done", 
                        "bert-multilingual/language_zh_done"]
     id2label, label2id = get_label_mapping()
-    print(label2id)
     model = AutoModelForSequenceClassification.from_pretrained("bert-multilingual/NLI_en", local_files_only=True, dtype=torch.float32)
+    print("nli model loaded")
     with open("output/NLI_0.0.txt", "w") as f:
         for idx, lang_model in enumerate(language_models):
             print("language model", datasets[idx])

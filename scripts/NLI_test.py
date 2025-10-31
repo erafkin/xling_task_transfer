@@ -4,10 +4,7 @@ from typing import List
 from datasets import load_dataset
 from transformers import AutoModelForSequenceClassification, AutoModelForMaskedLM, AutoTokenizer, DataCollatorWithPadding, AutoConfig, DataCollatorForTokenClassification
 from tqdm import tqdm
-from safetensors.torch import load_model
 from task_vectors import TaskVector
-from finetune_tasks import TokenClassificationHead
-import numpy as np
 def get_language_vector(base_model: str, saved_language: str):
     lang_vector = TaskVector(pretrained_model=AutoModelForMaskedLM.from_pretrained(base_model),
                              finetuned_model=AutoModelForMaskedLM.from_pretrained(saved_language, local_files_only=True))
@@ -80,19 +77,26 @@ def test_lang_nli(nli, language_model, pretrained_checkpoint, language_dataset, 
     return accuracy
 
 if __name__ == "__main__":
+    bert = True
+    if bert:
+        base_model = "google-bert/bert-base-multilingual-uncased"
+        prefix = "bert-multilingual"
+    else:
+        base_model = "FacebookAI/xlm-roberta-base"
+        prefix = "xlm-roberta"
     datasets = ["en", "es", "hi", "de", "zh"]
-    language_models = ["bert-multilingual/language_en_done", 
-                       "bert-multilingual/language_es_done", 
-                       "bert-multilingual/language_hi_done", 
-                       "bert-multilingual/language_de_done", 
-                       "bert-multilingual/language_zh_done"]
+    language_models = [f"{prefix}/language_en_done", 
+                       f"{prefix}/language_es_done", 
+                       f"{prefix}/language_hi_done", 
+                       f"{prefix}/language_de_done", 
+                       f"{prefix}/language_zh_done"]
     id2label, label2id = get_label_mapping()
-    model = AutoModelForSequenceClassification.from_pretrained("bert-multilingual/NLI_en", local_files_only=True, dtype=torch.float32)
+    model = AutoModelForSequenceClassification.from_pretrained(f"{prefix}/NLI_en", local_files_only=True, dtype=torch.float32)
     print("nli model loaded")
     with open("output/NLI_0.0.txt", "w") as f:
         for idx, lang_model in enumerate(language_models):
             print("language model", datasets[idx])
-            accuracy= test_lang_nli(model, lang_model, "google-bert/bert-base-multilingual-uncased", datasets[idx], label2id)
+            accuracy= test_lang_nli(model, lang_model, base_model, datasets[idx], label2id)
             print(f"accuracy: {accuracy}")  
             f.write(f"\n======language: {lang_model.split('_')[1]}=======\n")
             f.write(f"accuracy: {accuracy}\n")

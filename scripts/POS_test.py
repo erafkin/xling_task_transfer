@@ -46,7 +46,7 @@ def get_label_mapping():
 
 def test_lang_pos(ner, language_model, pretrained_checkpoint, language_folder, label2id, lambdas: List[float]= [0.0, 0.25, 0.5, 0.75, 1.0], batch_size:int=32):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    if language_model != "bert-multilingual/language_en_done":
+    if language_folder != "UD_English-PUD/en_pud-ud-test.conllu":
         lv = get_language_vector(pretrained_checkpoint, language_model)
         best_lambda = 0.0
         ner = apply_language_vector_to_model(ner, lv, best_lambda) # TODO find best lambda:
@@ -98,6 +98,13 @@ def test_lang_pos(ner, language_model, pretrained_checkpoint, language_folder, l
     return accuracy
 
 if __name__ == "__main__":
+    bert = False
+    if bert:
+        base_model = "google-bert/bert-base-multilingual-uncased"
+        prefix = "bert-multilingual"
+    else:
+        base_model = "FacebookAI/xlm-roberta-base"
+        prefix = "xlm-roberta"
     datasets = [
         "UD_English-PUD/en_pud-ud-test.conllu",
         "UD_Spanish-PUD/es_pud-ud-test.conllu",
@@ -105,23 +112,30 @@ if __name__ == "__main__":
         "UD_German-PUD/de_pud-ud-test.conllu", 
         "UD_Chinese-PUD/zh_pud-ud-test.conllu"
         ]
-    language_models = ["bert-multilingual/language_en_done", "bert-multilingual/language_es_done", "bert-multilingual/language_hi_done", "bert-multilingual/language_de_done", "bert-multilingual/language_zh_done"]
+    language_models = [f"{prefix}/language_en_done", 
+                       f"{prefix}/language_es_done", 
+                       f"{prefix}/language_hi_done", 
+                       f"{prefix}/language_de_done", 
+                       f"{prefix}/language_zh_done"]
     id2label, label2id = get_label_mapping()
-    encoder_checkpoint = "bert-multilingual/language_en_done"
+    encoder_checkpoint = f"{prefix}/language_en_done"
     config = AutoConfig.from_pretrained(encoder_checkpoint)
     mlm_model = AutoModelForMaskedLM.from_pretrained(
-        "bert-multilingual/language_en_done",
+        f"{prefix}/language_en_done",
         config=config,
         dtype=torch.float32,
     )
-    bert_encoder = mlm_model.bert
-    pos_model = TokenClassificationHead(bert_encoder, num_labels=len(id2label))
-    load_model(pos_model, "bert-multilingual/POS_en/model.safetensors", device="cpu")
+    if bert:
+        encoder = mlm_model.bert
+    else:
+        encoder = mlm_model.roberta
+    pos_model = TokenClassificationHead(encoder, num_labels=len(id2label))
+    load_model(pos_model, f"{prefix}/POS_en/model.safetensors", device="cpu")
     print('pos model loaded')
     with open("output/POS_0.0.txt", "w") as f:
         for idx, model in enumerate(language_models):
             print("language model", model)
-            accuracy= test_lang_pos(pos_model, model, "google-bert/bert-base-multilingual-uncased", datasets[idx], label2id)
+            accuracy= test_lang_pos(pos_model, model, base_model, datasets[idx], label2id)
             print(f"accuracy: {accuracy}")  
             f.write(f"\n======language: {model.split('_')[1]}=======\n")
             f.write(f"accuracy: {accuracy}\n")

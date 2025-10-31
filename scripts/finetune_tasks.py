@@ -18,14 +18,14 @@ import pandas as pd
 class TokenClassificationHead(nn.Module):
     def __init__(self, encoder: nn.Module, num_labels: int, dropout: float = 0.1):
         super().__init__()
-        self.bert = encoder
+        self.roberta = encoder
         self.dropout = nn.Dropout(dropout)
-        self.classifier = nn.Linear(self.bert.config.hidden_size, num_labels)
+        self.classifier = nn.Linear(self.roberta.config.hidden_size, num_labels)
         nn.init.xavier_uniform_(self.classifier.weight)
         nn.init.zeros_(self.classifier.bias)
 
     def forward(self, input_ids, attention_mask=None, token_type_ids=None, labels=None, **kwargs):
-        outputs = self.bert(
+        outputs = self.roberta(
             input_ids,
             attention_mask=attention_mask,
             token_type_ids=token_type_ids,
@@ -158,9 +158,9 @@ def train_NER_model(model_checkpoint):
         dtype=torch.float32,
     ).to(device)
 
-    bert_encoder = mlm_model.roberta
+    encoder = mlm_model.roberta
     model = TokenClassificationHead(
-        encoder=bert_encoder,
+        encoder=encoder,
         num_labels=len(id2label),
         dropout=0.1,
     ).to(device)
@@ -263,9 +263,9 @@ def train_POS_model(model_checkpoint, GUM_folder: str = "GUM_en"):
         dtype=torch.float32,
     ).to(device)
 
-    bert_encoder = mlm_model.roberta
+    encoder = mlm_model.roberta
     model = TokenClassificationHead(
-        encoder=bert_encoder,
+        encoder=encoder,
         num_labels=len(id2label),
         dropout=0.1,
     ).to(device)
@@ -394,9 +394,9 @@ if __name__ == "__main__":
     parser.add_argument("task", help="the task to train an english model on")
     args = parser.parse_args()
     if args.task == "ner":
-        train_NER_model("language_en/final")
+        train_NER_model("./xlm-roberta/language_en_done")
     elif args.task == "pos":
-        train_POS_model("language_en/final")
+        train_POS_model("./xlm-roberta/language_en_done")
     elif args.task == "nli":
         train_NLI_model("./bert-multilingual/language_en_done")
     else:

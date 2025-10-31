@@ -16,16 +16,32 @@ from torch import nn
 import pandas as pd
 
 class TokenClassificationHead(nn.Module):
-    def __init__(self, encoder: nn.Module, num_labels: int, dropout: float = 0.1):
+    def __init__(self, encoder: nn.Module, num_labels: int, dropout: float = 0.1, bert:bool=False):
         super().__init__()
-        self.roberta = encoder
+        self.roberta = None
+        self.bert = None
+        self.classifier = None
+        if bert:
+            self.bert = encoder
+            self.classifier = nn.Linear(self.bert.config.hidden_size, num_labels)
+        else:
+            self.roberta = encoder
+            self.classifier = nn.Linear(self.roberta.config.hidden_size, num_labels)
         self.dropout = nn.Dropout(dropout)
-        self.classifier = nn.Linear(self.roberta.config.hidden_size, num_labels)
+        
         nn.init.xavier_uniform_(self.classifier.weight)
         nn.init.zeros_(self.classifier.bias)
 
     def forward(self, input_ids, attention_mask=None, token_type_ids=None, labels=None, **kwargs):
-        outputs = self.roberta(
+        if self.bert is None:
+            outputs = self.roberta(
+                input_ids,
+                attention_mask=attention_mask,
+                token_type_ids=token_type_ids,
+                return_dict=True,
+            )
+        else:
+            outputs = self.bert(
             input_ids,
             attention_mask=attention_mask,
             token_type_ids=token_type_ids,
@@ -157,8 +173,10 @@ def train_NER_model(model_checkpoint):
         config=config,
         dtype=torch.float32,
     ).to(device)
-
-    encoder = mlm_model.roberta
+    if "roberta" in model_checkpoint:
+        encoder = mlm_model.roberta
+    else:
+        encoder = mlm_model.bert
     model = TokenClassificationHead(
         encoder=encoder,
         num_labels=len(id2label),
@@ -263,7 +281,10 @@ def train_POS_model(model_checkpoint, GUM_folder: str = "GUM_en"):
         dtype=torch.float32,
     ).to(device)
 
-    encoder = mlm_model.roberta
+    if "roberta" in model_checkpoint:
+        encoder = mlm_model.roberta
+    else:
+        encoder = mlm_model.bert
     model = TokenClassificationHead(
         encoder=encoder,
         num_labels=len(id2label),

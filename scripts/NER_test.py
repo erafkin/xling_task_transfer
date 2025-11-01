@@ -48,7 +48,7 @@ def test_lang_ner(ner, language_model, pretrained_checkpoint, language_dataset, 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if language_dataset != "English (EN)":
         lv = get_language_vector(pretrained_checkpoint, language_model)
-        best_lambda = 1.0
+        best_lambda = 0.0
         ner = apply_language_vector_to_model(ner, lv, best_lambda) # TODO find best lambda:
     NER_dataset = load_dataset("MultiCoNER/multiconer_v2", language_dataset, trust_remote_code=True)
     tokenizer = AutoTokenizer.from_pretrained(pretrained_checkpoint)
@@ -126,7 +126,7 @@ if __name__ == "__main__":
     ner_model = TokenClassificationHead(encoder, num_labels=len(id2label))
     load_model(ner_model, f"{prefix}/NER_en/model.safetensors", device="cpu")
     print('ner model loaded')
-    with open("output/NER_1.0.txt", "w") as f:
+    with open("output/NER_0.0.txt", "w") as f:
         for idx, model in enumerate(language_models):
             print("language model", model)
             accuracy= test_lang_ner(ner_model, model, base_model, datasets[idx], label2id)

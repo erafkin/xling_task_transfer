@@ -48,7 +48,7 @@ def test_lang_pos(ner, language_model, pretrained_checkpoint, language_folder, l
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if language_folder != "UD_English-PUD/en_pud-ud-test.conllu":
         lv = get_language_vector(pretrained_checkpoint, language_model)
-        best_lambda = 1.0
+        best_lambda = 0.0
         ner = apply_language_vector_to_model(ner, lv, best_lambda) # TODO find best lambda:
     test_dataset = load_conllu_data(language_folder)
     test_dataset = Dataset.from_pandas(test_dataset)
@@ -87,18 +87,17 @@ def test_lang_pos(ner, language_model, pretrained_checkpoint, language_folder, l
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, collate_fn=collator)
     with torch.no_grad():
         for batch in tqdm(test_dataloader):
-            input_ids = batch["input_ids"].to(device)
-            ps = ner(input_ids)["logits"]
-            ps = torch.argmax(ps, dim=-1).cpu().tolist()
-            ls = batch["labels"].cpu().tolist()
-            preds += ps
-            labels += ls
+            inputs = {k: v.to(device) for k, v in batch.items() if k != "label"}
+            logits = ner(**inputs)["logits"]
+            predictions = torch.argmax(logits, dim=-1).cpu().numpy()
+            preds.extend(predictions)
+            labels.extend(batch["labels"].cpu().numpy())
     accuracy = compute_metrics(preds, labels)
     ner.to("cpu")
     return accuracy
 
 if __name__ == "__main__":
-    bert = False
+    bert = True
     if bert:
         base_model = "google-bert/bert-base-multilingual-uncased"
         prefix = "bert-multilingual"
@@ -118,7 +117,7 @@ if __name__ == "__main__":
                        f"{prefix}/language_de_done", 
                        f"{prefix}/language_zh_done"]
     id2label, label2id = get_label_mapping()
-    encoder_checkpoint = f"{prefix}/language_en_done"
+    encoder_checkpoint = base_model
     mlm_model = AutoModelForMaskedLM.from_pretrained(
         base_model,
         local_files_only=True,
@@ -129,10 +128,10 @@ if __name__ == "__main__":
     else:
         encoder = mlm_model.roberta
     pos_model = TokenClassificationHead(encoder, num_labels=len(id2label), bert=bert)
-    load_model(pos_model, "POS_en/model.safetensors", device="cpu")
+    load_model(pos_model, f"{prefix}/base_finetuned/POS_en/model.safetensors", device="cpu")
     print('pos model loaded')
     print(pos_model)
-    with open("output/POS_1.0.txt", "w") as f:
+    with open("output/POS_0.0.txt", "w") as f:
         for idx, model in enumerate(language_models):
             print("language model", model)
             accuracy= test_lang_pos(pos_model, model, base_model, datasets[idx], label2id)

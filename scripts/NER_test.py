@@ -97,7 +97,7 @@ def test_lang_ner(ner, language_model, pretrained_checkpoint, language_dataset, 
     return accuracy
 
 if __name__ == "__main__":
-    bert = False
+    bert = True
     if bert:
         base_model = "google-bert/bert-base-multilingual-uncased"
         prefix = "bert-multilingual"
@@ -123,7 +123,7 @@ if __name__ == "__main__":
         encoder = mlm_model.bert
     else:
         encoder = mlm_model.roberta
-    ner_model = TokenClassificationHead(encoder, num_labels=len(id2label))
+    ner_model = TokenClassificationHead(encoder, num_labels=len(id2label), bert-bert)
     load_model(ner_model, f"{prefix}/NER_en/model.safetensors", device="cpu")
     print('ner model loaded')
     with open("output/NER_0.0.txt", "w") as f:

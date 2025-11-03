@@ -175,12 +175,15 @@ def train_NER_model(model_checkpoint):
     ).to(device)
     if "roberta" in model_checkpoint:
         encoder = mlm_model.roberta
+        is_bert = False
     else:
         encoder = mlm_model.bert
+        is_bert = True
     model = TokenClassificationHead(
         encoder=encoder,
         num_labels=len(id2label),
         dropout=0.1,
+        bert=is_bert
     ).to(device)
 
     def set_trainable(mod: nn.Module, train_encoder: bool = False):
@@ -283,12 +286,15 @@ def train_POS_model(model_checkpoint, GUM_folder: str = "GUM_en"):
 
     if "roberta" in model_checkpoint:
         encoder = mlm_model.roberta
+        is_bert = False
     else:
         encoder = mlm_model.bert
+        is_bert = True
     model = TokenClassificationHead(
         encoder=encoder,
         num_labels=len(id2label),
         dropout=0.1,
+        bert=is_bert
     ).to(device)
 
     def set_trainable(mod: nn.Module, train_encoder: bool = False):
@@ -394,7 +400,7 @@ def train_NLI_model(model_checkpoint):
             per_device_train_batch_size=8,
             per_device_eval_batch_size=8,
             push_to_hub=False,
-            save_strategy="epoch",
+            save_strategy="no",
             fp16=False
         )    
     trainer = Trainer(
@@ -408,7 +414,7 @@ def train_NLI_model(model_checkpoint):
         )
 
     trainer.train()
-    trainer.model.save_pretrained(f"NLI_en/final")
+    trainer.save_model(f"NLI_en")
 
 
 if __name__ == "__main__":
@@ -416,10 +422,10 @@ if __name__ == "__main__":
     parser.add_argument("task", help="the task to train an english model on")
     args = parser.parse_args()
     if args.task == "ner":
-        train_NER_model("./xlm-roberta/language_en_done")
+        train_NER_model("google-bert/bert-base-multilingual-uncased")
     elif args.task == "pos":
-        train_POS_model("./xlm-roberta/language_en_done")
+        train_POS_model("FacebookAI/xlm-roberta-base")
     elif args.task == "nli":
-        train_NLI_model("./bert-multilingual/language_en_done")
+        train_NLI_model("google-bert/bert-base-multilingual-uncased")
     else:
         print("no task: ", args.task)

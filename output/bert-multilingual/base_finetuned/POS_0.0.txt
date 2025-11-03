@@ -1,0 +1,15 @@
+
+======language: en=======
+accuracy: 0.9661756427097017
+
+======language: es=======
+accuracy: 0.847922192749779
+
+======language: hi=======
+accuracy: 0.7165218850979899
+
+======language: de=======
+accuracy: 0.8705627106125652
+
+======language: zh=======
+accuracy: 0.676395050198459

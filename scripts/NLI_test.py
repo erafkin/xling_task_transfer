@@ -2,9 +2,11 @@ import torch
 from torch.utils.data import DataLoader
 from typing import List
 from datasets import load_dataset
-from transformers import AutoModelForSequenceClassification, AutoModelForMaskedLM, AutoTokenizer, DataCollatorWithPadding, AutoConfig, DataCollatorForTokenClassification
+from transformers import AutoModel,BertForSequenceClassification , AutoModelForMaskedLM, AutoTokenizer, DataCollatorWithPadding, AutoConfig, DataCollatorForTokenClassification, BertForSequenceClassification
 from tqdm import tqdm
 from task_vectors import TaskVector
+from safetensors.torch import load_model
+import numpy as np
 def get_language_vector(base_model: str, saved_language: str):
     lang_vector = TaskVector(pretrained_model=AutoModelForMaskedLM.from_pretrained(base_model),
                              finetuned_model=AutoModelForMaskedLM.from_pretrained(saved_language, local_files_only=True))
@@ -14,25 +16,18 @@ def apply_language_vector_to_model(nli_model_checkpoint: str, language_vector:Ta
     nli_model = language_vector.apply_to(nli_model_checkpoint, scaling_coef=lambda_coef)
     return nli_model
 
-def compute_metrics(predictions, labels):
-    # Simple accuracy calculation
-    assert(len(predictions) == len(labels))
-    total = len(predictions)
-    correct = sum(1 for pred, lab in zip(predictions,labels) if pred == lab)
-    accuracy = correct / total if total > 0 else 0
-    return accuracy
-
 def lambda_search(eval_set, coef):
     ...
 
 def get_label_mapping():
     NLI_dataset = load_dataset("facebook/xnli", "en", trust_remote_code=True)
-    unique_tags = sorted({ex["label"] for ex in NLI_dataset["train"]})
-    label2id = {tag: i for i, tag in enumerate(unique_tags)}
-    id2label = {i: tag for tag, i in label2id.items()}
+    unique_tags = sorted({str(ex["label"]) for ex in NLI_dataset["train"]})
+    id2label = {idx: lab for idx, lab in enumerate(unique_tags)}
+    label2id = {v: k for k, v in id2label.items()}
+    print(unique_tags, label2id, id2label)
     return id2label, label2id
 
-def test_lang_nli(nli, language_model, pretrained_checkpoint, language_dataset, label2id, lambdas: List[float]= [0.0, 0.25, 0.5, 0.75, 1.0], batch_size:int=8, ):
+def test_lang_nli(nli, language_model, pretrained_checkpoint, language_dataset, lambdas: List[float]= [0.0, 0.25, 0.5, 0.75, 1.0], batch_size:int=8):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("lang dataset ", language_dataset)
     if language_dataset != "en":
@@ -40,6 +35,8 @@ def test_lang_nli(nli, language_model, pretrained_checkpoint, language_dataset, 
         lv = get_language_vector(pretrained_checkpoint, language_model)
         best_lambda = 0.0
         nli = apply_language_vector_to_model(nli, lv, best_lambda) # TODO find best lambda:
+    else:
+        print("english -- don't need to apply a language vector")
     NLI_dataset = load_dataset("facebook/xnli", language_dataset, trust_remote_code=True)
     tokenizer = AutoTokenizer.from_pretrained(pretrained_checkpoint)
     def preprocess(examples):
@@ -55,24 +52,32 @@ def test_lang_nli(nli, language_model, pretrained_checkpoint, language_dataset, 
     tokenized_dataset= NLI_dataset.map(
         preprocess,
         batched=True,
+        remove_columns=NLI_dataset["test"].column_names
     )
     preds = []
     labels = []
-    nli.to(device).eval()
-    test = tokenized_dataset["test"]
+    nli.eval()
+    nli.to(device)
+    test = tokenized_dataset["validation"]
     test.set_format(type="torch", columns=["input_ids", "attention_mask", "label"])
-
     collator = DataCollatorWithPadding(tokenizer=tokenizer)
-    test_dataloader = DataLoader(test, batch_size=batch_size, collate_fn=collator)
+    test_dataloader = DataLoader(test, batch_size=batch_size, collate_fn=collator, shuffle=False)
     with torch.no_grad():
         for batch in tqdm(test_dataloader):
             input_ids = batch["input_ids"].to(device)
-            ps = nli(input_ids)
-            ps = torch.argmax(ps["logits"], 1).tolist()
+            attention_mask = batch["attention_mask"].to(device)
+            inputs = {
+                "input_ids": input_ids,
+                "attention_mask": attention_mask
+            }
+            ps = nli(**inputs)
+            ps = torch.argmax(ps["logits"].cpu(), -1).tolist()
             ls = batch["labels"].cpu().tolist()
             preds += ps
             labels += ls
-    accuracy = compute_metrics(preds, labels)
+    total = len(preds)
+    correct = sum(1 for pred, lab in zip(predictions,labels) if pred == lab)
+    accuracy = correct / total if total > 0 else 0
     nli.to("cpu")
     return accuracy
 
@@ -90,19 +95,24 @@ if __name__ == "__main__":
                        f"{prefix}/language_hi_done", 
                        f"{prefix}/language_de_done", 
                        f"{prefix}/language_zh_done"]
-    id2label, label2id = get_label_mapping()
-    model = AutoModelForSequenceClassification.from_pretrained(f"{prefix}/NLI_en", local_files_only=True, dtype=torch.float32)
+#    id2label, label2id = get_label_mapping()
+    print(f"NLI_en")
+    model = BertForSequenceClassification.from_pretrained(f"NLI_en/final", local_files_only=True)
+    print(model.config.num_labels)
+    print(model.config.id2label) 
+    print(next(model.parameters()).std())
+    #load_model(model, f"{prefix}/NLI_en/model.safetensors", device="cpu")
     print("nli model loaded")
+    print(model)
     with open("output/NLI_0.0.txt", "w") as f:
         for idx, lang_model in enumerate(language_models):
             print("language model", datasets[idx])
-            accuracy= test_lang_nli(model, lang_model, base_model, datasets[idx], label2id)
+            accuracy= test_lang_nli(model, lang_model, base_model, datasets[idx])
             print(f"accuracy: {accuracy}")  
             f.write(f"\n======language: {lang_model.split('_')[1]}=======\n")
             f.write(f"accuracy: {accuracy}\n")
             
         f.close()
-
 
 
 

@@ -383,17 +383,18 @@ def train_NLI_model(model_checkpoint):
         mod.train()
 
     set_trainable(model, train_encoder=True) 
-
     training_args = TrainingArguments(
             output_dir=f"NLI_en",
             eval_strategy="epoch",
+            #eval_steps=10000,
             learning_rate=2e-5,
+            #max_steps=1000,
             num_train_epochs=3, 
             weight_decay=0.01,
             per_device_train_batch_size=8,
             per_device_eval_batch_size=8,
             push_to_hub=False,
-            save_strategy="no",
+            save_strategy="epoch",
             fp16=False
         )    
     trainer = Trainer(
@@ -407,7 +408,7 @@ def train_NLI_model(model_checkpoint):
         )
 
     trainer.train()
-    trainer.save_model(f"NLI_en")
+    trainer.model.save_pretrained(f"NLI_en/final")
 
 
 if __name__ == "__main__":

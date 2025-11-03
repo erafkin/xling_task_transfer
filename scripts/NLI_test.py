@@ -2,7 +2,7 @@ import torch
 from torch.utils.data import DataLoader
 from typing import List
 from datasets import load_dataset
-from transformers import AutoModel,BertForSequenceClassification , AutoModelForMaskedLM, AutoTokenizer, DataCollatorWithPadding, AutoConfig, DataCollatorForTokenClassification, BertForSequenceClassification
+from transformers import AutoModel,AutoModelForSequenceClassification , AutoModelForMaskedLM, AutoTokenizer, DataCollatorWithPadding, AutoConfig, DataCollatorForTokenClassification, BertForSequenceClassification
 from tqdm import tqdm
 from task_vectors import TaskVector
 from safetensors.torch import load_model
@@ -33,7 +33,7 @@ def test_lang_nli(nli, language_model, pretrained_checkpoint, language_dataset, 
     if language_dataset != "en":
         print("getting lang vector and applying to nli model")
         lv = get_language_vector(pretrained_checkpoint, language_model)
-        best_lambda = 0.0
+        best_lambda = 1.0
         nli = apply_language_vector_to_model(nli, lv, best_lambda) # TODO find best lambda:
     else:
         print("english -- don't need to apply a language vector")
@@ -43,9 +43,10 @@ def test_lang_nli(nli, language_model, pretrained_checkpoint, language_dataset, 
         inputs = [examples[column] for column in ["premise", "hypothesis"]]
         tokenized_examples = tokenizer(
             *inputs,
-            padding=True,
-            max_length=512,
+            padding="max_length",          # **important** – matches training
             truncation=True,
+            max_length=512,
+            return_tensors="pt",
         )
         tokenized_examples['label'] = examples["label"]
         return tokenized_examples
@@ -56,27 +57,20 @@ def test_lang_nli(nli, language_model, pretrained_checkpoint, language_dataset, 
     )
     preds = []
     labels = []
-    nli.eval()
     nli.to(device)
-    test = tokenized_dataset["validation"]
-    test.set_format(type="torch", columns=["input_ids", "attention_mask", "label"])
-    collator = DataCollatorWithPadding(tokenizer=tokenizer)
+    test = tokenized_dataset["test"]
+    #test.set_format(type="torch", columns=["input_ids", "attention_mask", "label"])
+    collator = DataCollatorWithPadding(tokenizer=tokenizer, padding="max_length", max_length=512)
     test_dataloader = DataLoader(test, batch_size=batch_size, collate_fn=collator, shuffle=False)
     with torch.no_grad():
         for batch in tqdm(test_dataloader):
-            input_ids = batch["input_ids"].to(device)
-            attention_mask = batch["attention_mask"].to(device)
-            inputs = {
-                "input_ids": input_ids,
-                "attention_mask": attention_mask
-            }
-            ps = nli(**inputs)
-            ps = torch.argmax(ps["logits"].cpu(), -1).tolist()
-            ls = batch["labels"].cpu().tolist()
-            preds += ps
-            labels += ls
+            inputs = {k: v.to(device) for k, v in batch.items() if k != "label"}
+            logits = model(**inputs).logits
+            predictions = torch.argmax(logits, dim=-1).cpu().numpy()
+            preds.extend(predictions)
+            labels.extend(batch["labels"].cpu().numpy())
     total = len(preds)
-    correct = sum(1 for pred, lab in zip(predictions,labels) if pred == lab)
+    correct = sum(1 for pred, lab in zip(preds,labels) if pred == lab)
     accuracy = correct / total if total > 0 else 0
     nli.to("cpu")
     return accuracy
@@ -95,16 +89,17 @@ if __name__ == "__main__":
                        f"{prefix}/language_hi_done", 
                        f"{prefix}/language_de_done", 
                        f"{prefix}/language_zh_done"]
-#    id2label, label2id = get_label_mapping()
     print(f"NLI_en")
-    model = BertForSequenceClassification.from_pretrained(f"NLI_en/final", local_files_only=True)
-    print(model.config.num_labels)
-    print(model.config.id2label) 
-    print(next(model.parameters()).std())
+    model = AutoModelForSequenceClassification.from_pretrained(
+        f"{prefix}/NLI_en",
+        device_map="auto",               # puts the model on GPU if available
+    )
+    tokenizer = AutoTokenizer.from_pretrained(base_model)
+
+    model.eval()                         # disables dropout / batch‑norm
+    torch.set_grad_enabled(False)        # extra safety guard
     #load_model(model, f"{prefix}/NLI_en/model.safetensors", device="cpu")
-    print("nli model loaded")
-    print(model)
-    with open("output/NLI_0.0.txt", "w") as f:
+    with open("output/NLI_1.0.txt", "w") as f:
         for idx, lang_model in enumerate(language_models):
             print("language model", datasets[idx])
             accuracy= test_lang_nli(model, lang_model, base_model, datasets[idx])

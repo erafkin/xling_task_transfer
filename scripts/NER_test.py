@@ -44,11 +44,11 @@ def get_label_mapping():
     id2label = {i: tag for tag, i in label2id.items()}
     return id2label, label2id
 
-def test_lang_ner(ner, language_model, pretrained_checkpoint, language_dataset, label2id, lambdas: List[float]= [0.0, 0.25, 0.5, 0.75, 1.0], batch_size:int=32, ):
+def test_lang_ner(ner, language_model, pretrained_checkpoint, language_dataset, label2id, lambdas: List[float]= [0.0, 0.25, 0.5, 0.75, 1.0], batch_size:int=32, best_lambda:float=1.0 ):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if language_dataset != "English (EN)":
         lv = get_language_vector(pretrained_checkpoint, language_model)
-        best_lambda = 0.0
+        # best_lambda = 0.0
         ner = apply_language_vector_to_model(ner, lv, best_lambda) # TODO find best lambda:
     NER_dataset = load_dataset("MultiCoNER/multiconer_v2", language_dataset, trust_remote_code=True)
     tokenizer = AutoTokenizer.from_pretrained(pretrained_checkpoint)
@@ -86,18 +86,19 @@ def test_lang_ner(ner, language_model, pretrained_checkpoint, language_dataset, 
     test_dataloader = DataLoader(test, batch_size=batch_size, collate_fn=collator)
     with torch.no_grad():
         for batch in tqdm(test_dataloader):
-            input_ids = batch["input_ids"].to(device)
-            ps = ner(input_ids)["logits"]
-            ps = torch.argmax(ps, dim=-1).cpu().tolist()
-            ls = batch["labels"].cpu().tolist()
-            preds += ps
-            labels += ls
+            inputs = {k: v.to(device) for k, v in batch.items() if k != "label"}
+            logits = ner(**inputs)["logits"]
+            predictions = torch.argmax(logits, dim=-1).cpu().numpy()
+            preds.extend(predictions)
+            labels.extend(batch["labels"].cpu().numpy())
     accuracy = compute_metrics(preds, labels)
     ner.to("cpu")
     return accuracy
 
 if __name__ == "__main__":
     bert = True
+    best_lambda = 1.0
+    model_base = "base_finetuned"
     if bert:
         base_model = "google-bert/bert-base-multilingual-uncased"
         prefix = "bert-multilingual"
@@ -115,7 +116,7 @@ if __name__ == "__main__":
     encoder_checkpoint = f"{prefix}/language_en_done"
     config = AutoConfig.from_pretrained(encoder_checkpoint)
     mlm_model = AutoModelForMaskedLM.from_pretrained(
-        f"{prefix}/language_en_done",
+        base_model,
         config=config,
         dtype=torch.float32,
     )
@@ -123,10 +124,10 @@ if __name__ == "__main__":
         encoder = mlm_model.bert
     else:
         encoder = mlm_model.roberta
-    ner_model = TokenClassificationHead(encoder, num_labels=len(id2label), bert-bert)
-    load_model(ner_model, f"{prefix}/NER_en/model.safetensors", device="cpu")
+    ner_model = TokenClassificationHead(encoder, num_labels=len(id2label), bert=bert)
+    load_model(ner_model, f"{prefix}/{model_base}/NER_en/model.safetensors", device="cpu")
     print('ner model loaded')
-    with open("output/NER_0.0.txt", "w") as f:
+    with open(f"output/{model_base}/NER_{best_lambda}.txt", "w") as f:
         for idx, model in enumerate(language_models):
             print("language model", model)
             accuracy= test_lang_ner(ner_model, model, base_model, datasets[idx], label2id)

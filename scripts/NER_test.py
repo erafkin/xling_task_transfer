@@ -7,7 +7,7 @@ from tqdm import tqdm
 from safetensors.torch import load_model
 from task_vectors import TaskVector
 from finetune_tasks import TokenClassificationHead
-
+import gc
 def get_language_vector(base_model: str, saved_language: str):
     lang_vector = TaskVector(pretrained_model=AutoModelForMaskedLM.from_pretrained(base_model),
                              finetuned_model=AutoModelForMaskedLM.from_pretrained(saved_language, local_files_only=True))
@@ -47,7 +47,6 @@ def test_lang_ner(ner, language_model, pretrained_checkpoint, dataset, best_lamb
     if "en" in language_model:
         lv = get_language_vector(pretrained_checkpoint, language_model)
         ner = apply_language_vector_to_model(ner, lv, best_lambda) # TODO find best lambda:
-   
     preds = []
     labels = []
     ner.to(device).eval()
@@ -64,6 +63,8 @@ def test_lang_ner(ner, language_model, pretrained_checkpoint, dataset, best_lamb
             labels.extend(batch["labels"].cpu().numpy())
     accuracy = compute_metrics(preds, labels)
     ner.to("cpu")
+    del ner
+    gc.collect()
     return accuracy
 
 if __name__ == "__main__":
@@ -134,7 +135,7 @@ if __name__ == "__main__":
 
                 best_lambda = max(hyperparameter_results, key=hyperparameter_results.get)
                 print(best_lambda)
-                with open(f"output/{prefix}/{model_base}/NER.txt", "w+") as f:
+                with open(f"output/{prefix}/{model_base}/NER.txt", "a") as f:
                     print("language model", model)
                     ner_model = TokenClassificationHead(encoder, num_labels=len(id2label), bert=bert)
                     load_model(ner_model, f"{prefix}/{model_base}/NER_en/model.safetensors", device="cpu") 

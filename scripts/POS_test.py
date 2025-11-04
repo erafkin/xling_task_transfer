@@ -65,6 +65,8 @@ def test_lang_pos(pos, language_model, pretrained_checkpoint, dataset, best_lamb
             labels.extend(batch["labels"].cpu().numpy())
     accuracy = compute_metrics(preds, labels)
     pos.to("cpu")
+    del pos
+    gc.collect()
     return accuracy
 
 if __name__ == "__main__":
@@ -75,7 +77,7 @@ if __name__ == "__main__":
     datasets = ["English (EN)", "Spanish (ES)", "Hindi (HI)", "German (DE)", "Chinese (ZH)"]
     id2label, label2id = get_label_mapping()
     val_datasets = [
-        "UD_English-GUM/en_gum-ud-dev.conllu", 
+        "GUM_en/en_gum-ud-dev.conllu", 
         "val_datasets_pos/es_gsd-ud-dev.conllu", 
         "val_datasets_pos/hi_hdtb-ud-dev.conllu",
         "val_datasets_pos/de_gsd-ud-dev.conllu",
@@ -155,7 +157,7 @@ if __name__ == "__main__":
                 print(hyperparameter_results)
                 best_lambda = max(hyperparameter_results, key=hyperparameter_results.get)
                 print(best_lambda)
-                with open(f"output/{prefix}/{model_base}/POS.txt", "w+") as f:
+                with open(f"output/{prefix}/{model_base}/POS.txt", "a") as f:
                     print("language model", model)
                     pos_model = TokenClassificationHead(encoder, num_labels=len(id2label), bert=bert)
                     load_model(pos_model, f"{prefix}/{model_base}/POS_en/model.safetensors", device="cpu")

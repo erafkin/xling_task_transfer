@@ -93,7 +93,7 @@ if __name__ == "__main__":
                 f.close()
             avg_loss, ppl, nan, inf, total_norm = eval_model(base_model, sentences=sentences)
             file.write(f"\n=== LANGUAGE {language} ===\n")
-            file.write("\n=== Perplexity result ===\n")
+            file.write("\n=== Perplexity ===\n")
             file.write(f"Model: base\n")
             file.write(f"Average token‑wise loss : {avg_loss:.4f}\n")
             file.write(f"Perplexity (exp(loss)) : {ppl:.2f}\n")

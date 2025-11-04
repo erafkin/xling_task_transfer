@@ -351,14 +351,11 @@ def train_NLI_model(model_checkpoint):
             max_length=512,
             truncation=True,
         )
-        tokenized_examples['label'] = [
-            label2id[label]
-            for label in examples['label']
-        ]
+        tokenized_examples['label'] = examples['label']
         return tokenized_examples
     def compute_metrics(eval_pred):
         predictions, labels = eval_pred
-        predictions = np.argmax(predictions, axis=-1)
+        predictions = np.argmax(predictions, axis=1)
         # Simple accuracy calculation
         total = len(predictions)
         correct = sum(1 for pred, lab in zip(predictions, labels) if pred == lab)
@@ -391,14 +388,14 @@ def train_NLI_model(model_checkpoint):
     set_trainable(model, train_encoder=True) 
     training_args = TrainingArguments(
             output_dir=f"xlm-roberta/base_finetuned/NLI_en",
-            eval_strategy="epoch",
-            #eval_steps=10000,
+            eval_strategy="steps",
+            eval_steps=100,
             learning_rate=2e-5,
-            #max_steps=1000,
+            max_steps=1000,
             num_train_epochs=3, 
             weight_decay=0.01,
-            per_device_train_batch_size=8,
-            per_device_eval_batch_size=8,
+            per_device_train_batch_size=32,
+            per_device_eval_batch_size=32,
             push_to_hub=False,
             save_strategy="epoch",
             fp16=False

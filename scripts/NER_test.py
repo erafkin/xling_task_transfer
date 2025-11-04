@@ -51,11 +51,10 @@ def test_lang_ner(ner, language_model, pretrained_checkpoint, dataset, best_lamb
     preds = []
     labels = []
     ner.to(device).eval()
-    test = tokenized_dataset["train"]
     dataset.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"])
 
     collator = DataCollatorForTokenClassification(tokenizer=tokenizer)
-    test_dataloader = DataLoader(test, batch_size=batch_size, collate_fn=collator)
+    test_dataloader = DataLoader(dataset, batch_size=batch_size, collate_fn=collator)
     with torch.no_grad():
         for batch in tqdm(test_dataloader):
             inputs = {k: v.to(device) for k, v in batch.items() if k != "label"}

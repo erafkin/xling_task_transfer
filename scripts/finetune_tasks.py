@@ -388,13 +388,13 @@ def train_NLI_model(model_checkpoint):
     set_trainable(model, train_encoder=True) 
     training_args = TrainingArguments(
             output_dir=f"xlm-roberta/base_finetuned/NLI_en",
-            eval_strategy="steps",
-            eval_steps=100,
+            eval_strategy="epoch",
+            # eval_steps=100,
             learning_rate=2e-5,
-            max_steps=1000,
+            # max_steps=1000,
             num_train_epochs=3, 
             weight_decay=0.01,
-            per_device_train_batch_size=32,
+            per_device_train_batch_size=32, # 8 for bert, 32 for roberta (roberta wasn't learning anything)
             per_device_eval_batch_size=32,
             push_to_hub=False,
             save_strategy="epoch",

@@ -422,7 +422,7 @@ if __name__ == "__main__":
     parser.add_argument("task", help="the task to train an english model on")
     args = parser.parse_args()
     if args.task == "ner":
-        train_NER_model("google-bert/bert-base-multilingual-uncased")
+        train_NER_model("FacebookAI/xlm-roberta-base")
     elif args.task == "pos":
         train_POS_model("FacebookAI/xlm-roberta-base")
     elif args.task == "nli":

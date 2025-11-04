@@ -67,7 +67,7 @@ def test_lang_ner(ner, language_model, pretrained_checkpoint, dataset, best_lamb
     return accuracy
 
 if __name__ == "__main__":
-    test_lambdas = [0.0, 0.25, 0.5, 0.75, 1.0]
+    test_lambdas = [0.1, 0.2, 0.2, 0.3, 0.4, 0.6, 0.7, 0.8, 0.9, 1.0]
     model_bases = ["lang_en_finetuned", "base_finetuned"]
     bert_values = [True, False]
     
@@ -134,7 +134,7 @@ if __name__ == "__main__":
                 print(hyperparameter_results)
                 best_lambda = max(hyperparameter_results, key=hyperparameter_results.get)
                 print(best_lambda)
-                with open(f"output/{prefix}/{model_base}/NER.txt", "w") as f:
+                with open(f"output/{prefix}/{model_base}/NER.txt", "w+") as f:
                     print("language model", model)
                     accuracy= test_lang_ner(ner_model, f"{prefix}/{model}", base_model, tokenized_dataset["train"], best_lambda)
                     print(f"accuracy: {accuracy}")  

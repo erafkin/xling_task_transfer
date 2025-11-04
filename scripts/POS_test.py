@@ -145,10 +145,10 @@ if __name__ == "__main__":
                     encoder = mlm_model.bert
                 else:
                     encoder = mlm_model.roberta
-                load_model(pos_model, f"{prefix}/{model_base}/POS_en/model.safetensors", device="cpu")
                 hyperparameter_results = {}
                 for l in test_lambdas:
                     pos_model = TokenClassificationHead(encoder, num_labels=len(id2label), bert=bert)
+                    load_model(pos_model, f"{prefix}/{model_base}/POS_en/model.safetensors", device="cpu")
                     accuracy = test_lang_pos(pos_model, f"{prefix}/{model}", base_model, tokenized_dataset["validation"], l)
                     hyperparameter_results[l] = accuracy
                 print("hyperparamter serach results")
@@ -158,6 +158,7 @@ if __name__ == "__main__":
                 with open(f"output/{prefix}/{model_base}/POS.txt", "w+") as f:
                     print("language model", model)
                     pos_model = TokenClassificationHead(encoder, num_labels=len(id2label), bert=bert)
+                    load_model(pos_model, f"{prefix}/{model_base}/POS_en/model.safetensors", device="cpu")
                     accuracy= test_lang_pos(pos_model, f"{prefix}/{model}", base_model, tokenized_dataset["train"], best_lambda)
                     print(f"accuracy: {accuracy}")  
                     f.write(f"\n======language: {model.split('_')[1]}=======\n")

@@ -131,7 +131,10 @@ if __name__ == "__main__":
                 for l in test_lambdas:
                     accuracy = test_lang_ner(ner_model, f"{prefix}/{model}", base_model, tokenized_dataset["validation"], l)
                     hyperparameter_results[l] = accuracy
+                print("hyperparamter serach results")
+                print(hyperparameter_results)
                 best_lambda = max(hyperparameter_results, key=hyperparameter_results.get)
+                print(best_lambda)
                 with open(f"output/{prefix}/{model_base}/NER.txt", "w") as f:
                     print("language model", model)
                     accuracy= test_lang_ner(ner_model, f"{prefix}/{model}", base_model, tokenized_dataset["train"], best_lambda)

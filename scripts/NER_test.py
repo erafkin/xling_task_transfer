@@ -1,6 +1,6 @@
 import torch
 from torch.utils.data import DataLoader
-from typing import List
+from typing import List, Optional
 from datasets import load_dataset
 from transformers import AutoModelForMaskedLM, AutoTokenizer, AutoConfig, DataCollatorForTokenClassification
 from tqdm import tqdm
@@ -33,54 +33,26 @@ def compute_metrics(predictions, labels):
     correct = sum(1 for pred, lab in zip(y_pred, y_true) for p, l in zip(pred, lab) if p == l)
     accuracy = correct / total if total > 0 else 0
     return accuracy
-def lambda_search(eval_set, coef):
-    ...
 
 def get_label_mapping():
     NER_dataset = load_dataset("MultiCoNER/multiconer_v2", "English (EN)", trust_remote_code=True)
-    # Build a dense mapping 0 … C‑1
     unique_tags = sorted({tag for ex in NER_dataset["test"] for tag in ex["ner_tags"]})
     label2id = {tag: i for i, tag in enumerate(unique_tags)}
     id2label = {i: tag for tag, i in label2id.items()}
     return id2label, label2id
+    
 
-def test_lang_ner(ner, language_model, pretrained_checkpoint, language_dataset, label2id, lambdas: List[float]= [0.0, 0.25, 0.5, 0.75, 1.0], batch_size:int=32, best_lambda:float=1.0 ):
+def test_lang_ner(ner, language_model, pretrained_checkpoint, dataset, best_lambda:Optional[float]=1.0, batch_size:int=32):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    if language_dataset != "English (EN)":
+    if "en" in language_model:
         lv = get_language_vector(pretrained_checkpoint, language_model)
-        # best_lambda = 0.0
         ner = apply_language_vector_to_model(ner, lv, best_lambda) # TODO find best lambda:
-    NER_dataset = load_dataset("MultiCoNER/multiconer_v2", language_dataset, trust_remote_code=True)
-    tokenizer = AutoTokenizer.from_pretrained(pretrained_checkpoint)
-    def tokenize_and_align_labels(examples):
-        # from https://reybahl.medium.com/token-classification-in-python-with-huggingface-3fab73a6a20e
-        tokenized_inputs = tokenizer(examples["tokens"], truncation=True, is_split_into_words=True)
-        labels = []
-        for i, label in enumerate(examples[f"ner_tags"]):
-            word_ids = tokenized_inputs.word_ids(batch_index=i)  # Map tokens to their respective word.
-            previous_word_idx = None
-            label_ids = []
-            for word_idx in word_ids:  # Set the special tokens to -100.
-                if word_idx is None:
-                    label_ids.append(-100)
-                elif word_idx != previous_word_idx:  # Only label the first token of a given word.
-                    label_ids.append(label2id[label[word_idx]])
-                else:
-                    label_ids.append(-100)
-                previous_word_idx = word_idx
-            labels.append(label_ids)
-
-        tokenized_inputs["labels"] = labels
-        return tokenized_inputs
-    tokenized_dataset= NER_dataset.map(
-        tokenize_and_align_labels,
-        batched=True,
-    )
+   
     preds = []
     labels = []
     ner.to(device).eval()
     test = tokenized_dataset["train"]
-    test.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"])
+    dataset.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"])
 
     collator = DataCollatorForTokenClassification(tokenizer=tokenizer)
     test_dataloader = DataLoader(test, batch_size=batch_size, collate_fn=collator)
@@ -96,48 +68,77 @@ def test_lang_ner(ner, language_model, pretrained_checkpoint, language_dataset, 
     return accuracy
 
 if __name__ == "__main__":
-    test_lambdas = [0.0, 1.0]
+    test_lambdas = [0.0, 0.25, 0.5, 0.75, 1.0]
     model_bases = ["lang_en_finetuned", "base_finetuned"]
     bert_values = [True, False]
-    for bert in bert_values:
-        for model_base in model_bases:
-            if bert:
-                base_model = "google-bert/bert-base-multilingual-uncased"
-                prefix = "bert-multilingual"
-            else:
-                base_model = "FacebookAI/xlm-roberta-base"
-                prefix = "xlm-roberta"
+    
+    datasets = ["English (EN)", "Spanish (ES)", "Hindi (HI)", "German (DE)", "Chinese (ZH)"]
+    id2label, label2id = get_label_mapping()
+    language_models = ["language_en_done", 
+                    "language_es_done", 
+                    "language_hi_done", 
+                    "language_de_done", 
+                    "language_zh_done"]
+    for idx, model in enumerate(language_models):
+        for bert in bert_values:
+            for model_base in model_bases:
+                if bert:
+                    base_model = "google-bert/bert-base-multilingual-uncased"
+                    prefix = "bert-multilingual"
+                else:
+                    base_model = "FacebookAI/xlm-roberta-base"
+                    prefix = "xlm-roberta"
+                # handle data
+                NER_dataset = load_dataset("MultiCoNER/multiconer_v2", datasets[idx], trust_remote_code=True)
+                tokenizer = AutoTokenizer.from_pretrained(base_model)
+                def tokenize_and_align_labels(examples):
+                    # from https://reybahl.medium.com/token-classification-in-python-with-huggingface-3fab73a6a20e
+                    tokenized_inputs = tokenizer(examples["tokens"], truncation=True, is_split_into_words=True)
+                    labels = []
+                    for i, label in enumerate(examples[f"ner_tags"]):
+                        word_ids = tokenized_inputs.word_ids(batch_index=i)  # Map tokens to their respective word.
+                        previous_word_idx = None
+                        label_ids = []
+                        for word_idx in word_ids:  # Set the special tokens to -100.
+                            if word_idx is None:
+                                label_ids.append(-100)
+                            elif word_idx != previous_word_idx:  # Only label the first token of a given word.
+                                label_ids.append(label2id[label[word_idx]])
+                            else:
+                                label_ids.append(-100)
+                            previous_word_idx = word_idx
+                        labels.append(label_ids)
 
-            datasets = ["English (EN)", "Spanish (ES)", "Hindi (HI)", "German (DE)", "Chinese (ZH)"]
-            language_models = [f"{prefix}/language_en_done", 
-                            f"{prefix}/language_es_done", 
-                            f"{prefix}/language_hi_done", 
-                            f"{prefix}/language_de_done", 
-                            f"{prefix}/language_zh_done"]
-            id2label, label2id = get_label_mapping()
-            encoder_checkpoint = f"{prefix}/language_en_done"
-            config = AutoConfig.from_pretrained(encoder_checkpoint)
-            mlm_model = AutoModelForMaskedLM.from_pretrained(
-                base_model,
-                config=config,
-                dtype=torch.float32,
-            )
-            if bert:
-                encoder = mlm_model.bert
-            else:
-                encoder = mlm_model.roberta
-            ner_model = TokenClassificationHead(encoder, num_labels=len(id2label), bert=bert)
-            load_model(ner_model, f"{prefix}/{model_base}/NER_en/model.safetensors", device="cpu")
-            print('ner model loaded')
-            for best_lambda in test_lambdas:
-                with open(f"output/{model_base}/NER_{best_lambda}.txt", "w") as f:
-                    for idx, model in enumerate(language_models):
-                        print("language model", model)
-                        accuracy= test_lang_ner(ner_model, model, base_model, datasets[idx], label2id)
-                        print(f"accuracy: {accuracy}")  
-                        f.write(f"\n======language: {model.split('_')[1]}=======\n")
-                        f.write(f"accuracy: {accuracy}\n")
-                        
+                    tokenized_inputs["labels"] = labels
+                    return tokenized_inputs
+                tokenized_dataset= NER_dataset.map(
+                    tokenize_and_align_labels,
+                    batched=True,
+                )
+
+                mlm_model = AutoModelForMaskedLM.from_pretrained(
+                    base_model,
+                    dtype=torch.float32,
+                )
+                if bert:
+                    encoder = mlm_model.bert
+                else:
+                    encoder = mlm_model.roberta
+                ner_model = TokenClassificationHead(encoder, num_labels=len(id2label), bert=bert)
+                load_model(ner_model, f"{prefix}/{model_base}/NER_en/model.safetensors", device="cpu")
+                print('ner model loaded')
+                hyperparameter_results = {}
+                for l in test_lambdas:
+                    accuracy = test_lang_ner(ner_model, f"{prefix}/{model}", base_model, tokenized_dataset["validation"], l)
+                    hyperparameter_results[l] = accuracy
+                best_lambda = max(hyperparameter_results, key=hyperparameter_results.get)
+                with open(f"output/{prefix}/{model_base}/NER.txt", "w") as f:
+                    print("language model", model)
+                    accuracy= test_lang_ner(ner_model, f"{prefix}/{model}", base_model, tokenized_dataset["train"], best_lambda)
+                    print(f"accuracy: {accuracy}")  
+                    f.write(f"\n======language: {model.split('_')[1]}=======\n")
+                    f.write(f"best lambda: {best_lambda}")
+                    f.write(f"accuracy: {accuracy}\n")
                     f.close()
 
 

@@ -308,7 +308,7 @@ def train_POS_model(model_checkpoint, GUM_folder: str = "GUM_en"):
     set_trainable(model, train_encoder=True) 
 
     training_args = TrainingArguments(
-            output_dir=f"POS_en",
+            output_dir=f"xlm-roberta/lang_en_finetuned/POS_en",
             eval_strategy="epoch",
             learning_rate=2e-5,
             num_train_epochs=3, 
@@ -330,7 +330,7 @@ def train_POS_model(model_checkpoint, GUM_folder: str = "GUM_en"):
         )
 
     trainer.train()
-    trainer.save_model(f"POS_en")
+    trainer.save_model(f"xlm-roberta/lang_en_finetuned/POS_en")
 
 
 def train_NLI_model(model_checkpoint):
@@ -390,7 +390,7 @@ def train_NLI_model(model_checkpoint):
 
     set_trainable(model, train_encoder=True) 
     training_args = TrainingArguments(
-            output_dir=f"NLI_en",
+            output_dir=f"xlm-roberta/base_finetuned/NLI_en",
             eval_strategy="epoch",
             #eval_steps=10000,
             learning_rate=2e-5,
@@ -400,7 +400,7 @@ def train_NLI_model(model_checkpoint):
             per_device_train_batch_size=8,
             per_device_eval_batch_size=8,
             push_to_hub=False,
-            save_strategy="no",
+            save_strategy="epoch",
             fp16=False
         )    
     trainer = Trainer(
@@ -414,7 +414,7 @@ def train_NLI_model(model_checkpoint):
         )
 
     trainer.train()
-    trainer.save_model(f"NLI_en")
+    trainer.save_model(f"xlm-roberta/base_finetuned/NLI_en")
 
 
 if __name__ == "__main__":
@@ -424,8 +424,8 @@ if __name__ == "__main__":
     if args.task == "ner":
         train_NER_model("FacebookAI/xlm-roberta-base")
     elif args.task == "pos":
-        train_POS_model("FacebookAI/xlm-roberta-base")
+        train_POS_model("xlm-roberta/language_en_done")
     elif args.task == "nli":
-        train_NLI_model("google-bert/bert-base-multilingual-uncased")
+        train_NLI_model("FacebookAI/xlm-roberta-base")
     else:
         print("no task: ", args.task)

@@ -69,7 +69,7 @@ def test_lang_pos(pos, language_model, pretrained_checkpoint, dataset, best_lamb
     return accuracy
 
 if __name__ == "__main__":
-    test_lambdas = [0.1, 0.2, 0.2, 0.3, 0.4, 0.6, 0.7, 0.8, 0.9, 1.0]
+    test_lambdas = [0.0, 0.1, 0.2, 0.2, 0.3, 0.4, 0.6, 0.7, 0.8, 0.9, 1.0]
     model_bases = ["lang_en_finetuned", "base_finetuned"]
     bert_values = [True, False]
     
@@ -106,7 +106,7 @@ if __name__ == "__main__":
                 # handle data
                 val_dataset = load_conllu_data(val_datasets[idx])
                 val_dataset = Dataset.from_pandas(val_dataset)
-                test_dataset = load_conllu_data(test_dataset[idx])
+                test_dataset = load_conllu_data(test_datasets[idx])
                 test_dataset = Dataset.from_pandas(test_dataset)
                 POS_dataset = DatasetDict({
                     "validation": val_dataset,
@@ -160,10 +160,10 @@ if __name__ == "__main__":
                     print("language model", model)
                     pos_model = TokenClassificationHead(encoder, num_labels=len(id2label), bert=bert)
                     load_model(pos_model, f"{prefix}/{model_base}/POS_en/model.safetensors", device="cpu")
-                    accuracy= test_lang_pos(pos_model, f"{prefix}/{model}", base_model, tokenized_dataset["train"], best_lambda)
+                    accuracy= test_lang_pos(pos_model, f"{prefix}/{model}", base_model, tokenized_dataset["test"], best_lambda)
                     print(f"accuracy: {accuracy}")  
                     f.write(f"\n======language: {model.split('_')[1]}=======\n")
-                    f.write(f"best lambda: {best_lambda}")
+                    f.write(f"best lambda: {best_lambda}\n")
                     f.write(f"accuracy: {accuracy}\n")
                     f.close()
 

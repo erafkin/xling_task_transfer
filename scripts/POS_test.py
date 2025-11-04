@@ -116,7 +116,7 @@ if __name__ == "__main__":
                     # from https://reybahl.medium.com/token-classification-in-python-with-huggingface-3fab73a6a20e
                     tokenized_inputs = tokenizer(examples["tokens"], truncation=True, is_split_into_words=True)
                     labels = []
-                    for i, label in enumerate(examples[f"ner_tags"]):
+                    for i, label in enumerate(examples["pos_tags"]):
                         word_ids = tokenized_inputs.word_ids(batch_index=i)  # Map tokens to their respective word.
                         previous_word_idx = None
                         label_ids = []
@@ -145,12 +145,12 @@ if __name__ == "__main__":
                     encoder = mlm_model.bert
                 else:
                     encoder = mlm_model.roberta
-                ner_model = TokenClassificationHead(encoder, num_labels=len(id2label), bert=bert)
-                load_model(ner_model, f"{prefix}/{model_base}/POS_en/model.safetensors", device="cpu")
-                print('ner model loaded')
+                pos_model = TokenClassificationHead(encoder, num_labels=len(id2label), bert=bert)
+                load_model(pos_model, f"{prefix}/{model_base}/POS_en/model.safetensors", device="cpu")
+                print('pos model loaded')
                 hyperparameter_results = {}
                 for l in test_lambdas:
-                    accuracy = test_lang_pos(ner_model, f"{prefix}/{model}", base_model, tokenized_dataset["validation"], l)
+                    accuracy = test_lang_pos(pos_model, f"{prefix}/{model}", base_model, tokenized_dataset["validation"], l)
                     hyperparameter_results[l] = accuracy
                 print("hyperparamter serach results")
                 print(hyperparameter_results)
@@ -158,7 +158,7 @@ if __name__ == "__main__":
                 print(best_lambda)
                 with open(f"output/{prefix}/{model_base}/POS.txt", "w+") as f:
                     print("language model", model)
-                    accuracy= test_lang_pos(ner_model, f"{prefix}/{model}", base_model, tokenized_dataset["train"], best_lambda)
+                    accuracy= test_lang_pos(pos_model, f"{prefix}/{model}", base_model, tokenized_dataset["train"], best_lambda)
                     print(f"accuracy: {accuracy}")  
                     f.write(f"\n======language: {model.split('_')[1]}=======\n")
                     f.write(f"best lambda: {best_lambda}")

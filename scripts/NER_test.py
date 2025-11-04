@@ -123,19 +123,20 @@ if __name__ == "__main__":
                     encoder = mlm_model.bert
                 else:
                     encoder = mlm_model.roberta
-                ner_model = TokenClassificationHead(encoder, num_labels=len(id2label), bert=bert)
                 load_model(ner_model, f"{prefix}/{model_base}/NER_en/model.safetensors", device="cpu")
-                print('ner model loaded')
                 hyperparameter_results = {}
                 for l in test_lambdas:
+                    ner_model = TokenClassificationHead(encoder, num_labels=len(id2label), bert=bert)
                     accuracy = test_lang_ner(ner_model, f"{prefix}/{model}", base_model, tokenized_dataset["validation"], l)
                     hyperparameter_results[l] = accuracy
                 print("hyperparamter serach results")
                 print(hyperparameter_results)
+
                 best_lambda = max(hyperparameter_results, key=hyperparameter_results.get)
                 print(best_lambda)
                 with open(f"output/{prefix}/{model_base}/NER.txt", "w+") as f:
                     print("language model", model)
+                    ner_model = TokenClassificationHead(encoder, num_labels=len(id2label), bert=bert)
                     accuracy= test_lang_ner(ner_model, f"{prefix}/{model}", base_model, tokenized_dataset["train"], best_lambda)
                     print(f"accuracy: {accuracy}")  
                     f.write(f"\n======language: {model.split('_')[1]}=======\n")

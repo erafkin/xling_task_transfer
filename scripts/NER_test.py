@@ -44,9 +44,8 @@ def get_label_mapping():
 
 def test_lang_ner(ner, language_model, pretrained_checkpoint, dataset, best_lambda:Optional[float]=1.0, batch_size:int=32):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    if "en" in language_model:
-        lv = get_language_vector(pretrained_checkpoint, language_model)
-        ner = apply_language_vector_to_model(ner, lv, best_lambda) # TODO find best lambda:
+    lv = get_language_vector(pretrained_checkpoint, language_model)
+    ner = apply_language_vector_to_model(ner, lv, best_lambda) 
     preds = []
     labels = []
     ner.to(device).eval()

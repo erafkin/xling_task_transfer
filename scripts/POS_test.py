@@ -7,6 +7,7 @@ from tqdm import tqdm
 from safetensors.torch import load_model
 from task_vectors import TaskVector
 from finetune_tasks import TokenClassificationHead, load_conllu_data
+import gc
 
 def get_language_vector(base_model: str, saved_language: str):
     lang_vector = TaskVector(pretrained_model=AutoModelForMaskedLM.from_pretrained(base_model),
@@ -45,10 +46,8 @@ def get_label_mapping():
 
 def test_lang_pos(pos, language_model, pretrained_checkpoint, dataset, best_lambda:float=1.0, batch_size:int=32):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    if "en" in language_model:
-        lv = get_language_vector(pretrained_checkpoint, language_model)
-        pos = apply_language_vector_to_model(pos, lv, best_lambda) # TODO find best lambda:
-   
+    lv = get_language_vector(pretrained_checkpoint, language_model)
+    pos = apply_language_vector_to_model(pos, lv, best_lambda)
     preds = []
     labels = []
     pos.to(device).eval()

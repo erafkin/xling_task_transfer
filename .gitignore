@@ -1,3 +1,6 @@
 .DS_Store
 venv*
 *__pycache__*
+xlm-roberta/
+bert-multilingual/
+val_datasets_pos/

@@ -7,3 +7,5 @@ bitsandbytes
 evaluate
 seqeval
 scikit-learn
+umap-learn
+matplotlib

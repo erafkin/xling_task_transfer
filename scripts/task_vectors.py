@@ -61,3 +61,15 @@ class TaskVector():
         pretrained_model.load_state_dict(new_state_dict, strict=False)
         return pretrained_model
 
+
+    def tv_to_vector(self):
+        """
+        turns task bector into a vector
+        """
+        # Extract all parameter tensors and flatten each one
+        flattened_tensors = [torch.flatten(param) for param in self.vector.values()]
+
+        # Concatenate all flattened tensors into a single 1D vector
+        single_vector = torch.cat(flattened_tensors)
+
+        return single_vector

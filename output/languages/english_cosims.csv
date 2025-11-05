@@ -1,0 +1,9 @@
+model,langauge,en_cossim
+bert,es,0.34350264
+bert,de,0.34469998
+bert,hi,0.26894173
+bert,zh,0.24307764
+roberta,es,0.6755509
+roberta,de,0.6537194
+roberta,hi,0.54227036
+roberta,zh,0.5900735

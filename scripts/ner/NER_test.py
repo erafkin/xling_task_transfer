@@ -2,11 +2,11 @@ import torch
 from torch.utils.data import DataLoader
 from typing import List, Optional
 from datasets import load_dataset
-from transformers import AutoModelForMaskedLM, AutoTokenizer, AutoConfig, DataCollatorForTokenClassification
+from transformers import AutoModelForMaskedLM, AutoTokenizer, DataCollatorForTokenClassification
 from tqdm import tqdm
 from safetensors.torch import load_model
-from task_vectors import TaskVector
-from finetune_tasks import TokenClassificationHead
+from scripts.task_vectors import TaskVector
+from scripts.task_utils import TokenClassificationHead
 import gc
 def get_language_vector(base_model: str, saved_language: str):
     lang_vector = TaskVector(pretrained_model=AutoModelForMaskedLM.from_pretrained(base_model),

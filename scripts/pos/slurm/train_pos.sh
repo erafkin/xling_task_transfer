@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name="nli"
+#SBATCH --job-name="train_pos"
 #SBATCH --nodes=1
 #SBATCH --partition=base
 #SBATCH --output="%x.o%j"
@@ -7,8 +7,6 @@
 #SBATCH --ntasks=1
 #SBATCH --mem=10G
 #SBATCH --time=60:00:00
-#SBATCH --mail-user=epr41@georgetown.edu
-#SBATCH --mail-type=END,FAIL
 
 module load cuda/12.5
 
@@ -18,4 +16,4 @@ python3.11 -m venv venv
 source venv/bin/activate
 pip3 install -r requirements.txt
 python3.11 --version
-python3.11 ./scripts/finetune_tasks.py nli
+python3.11 ./scripts/pos/POS_train.py

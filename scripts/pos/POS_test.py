@@ -5,8 +5,8 @@ from datasets import Dataset, DatasetDict
 from transformers import AutoModelForMaskedLM, AutoTokenizer, DataCollatorForTokenClassification
 from tqdm import tqdm
 from safetensors.torch import load_model
-from task_vectors import TaskVector
-from finetune_tasks import TokenClassificationHead, load_conllu_data
+from scripts.task_vectors import TaskVector
+from scripts.task_utils import TokenClassificationHead, load_conllu_data
 import gc
 
 def get_language_vector(base_model: str, saved_language: str):

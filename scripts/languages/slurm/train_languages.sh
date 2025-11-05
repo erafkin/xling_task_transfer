@@ -1,11 +1,11 @@
 #!/bin/bash
-#SBATCH --job-name="perplexity"
+#SBATCH --job-name="rafkin_train_lang"
 #SBATCH --nodes=1
-#SBATCH --partition=spot
+#SBATCH --partition=base
 #SBATCH --output="%x.o%j"
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1
-#SBATCH --mem=10G
+#SBATCH --mem=13G
 #SBATCH --time=60:00:00
 #SBATCH --mail-user=epr41@georgetown.edu
 #SBATCH --mail-type=END,FAIL
@@ -18,4 +18,4 @@ python3.11 -m venv venv
 source venv/bin/activate
 pip3 install -r requirements.txt
 python3.11 --version
-python3.11 scripts/perplexity_test.py 
+python3.11 ./scripts/languages/finetune_language_model.py

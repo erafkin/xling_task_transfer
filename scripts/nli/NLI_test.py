@@ -3,7 +3,7 @@ from torch.utils.data import DataLoader
 from datasets import load_dataset
 from transformers import AutoModelForSequenceClassification, AutoModelForMaskedLM, AutoTokenizer, DataCollatorWithPadding, AutoConfig, DataCollatorForTokenClassification, BertForSequenceClassification
 from tqdm import tqdm
-from task_vectors import TaskVector
+from scripts.task_vectors import TaskVector
 import gc
 
 def get_language_vector(base_model: str, saved_language: str):

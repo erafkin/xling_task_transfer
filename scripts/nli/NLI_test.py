@@ -44,7 +44,7 @@ def test_lang_nli(nli, language_model, pretrained_checkpoint, dataset, best_lamb
 
 if __name__ == "__main__":
     test_lambdas = [0.0, 0.1, 0.2, 0.2, 0.3, 0.4, 0.6, 0.7, 0.8, 0.9, 1.0]
-    model_bases = ["base_finetuned"]
+    model_base = "base_finetuned"
     bert_values = [True, False]
     
     datasets = ["en", "es", "hi", "de", "zh"]
@@ -55,63 +55,62 @@ if __name__ == "__main__":
                     "language_zh_done"]
     for idx, model in enumerate(language_models):
         for bert in bert_values:
-            for model_base in model_bases:
-                if bert:
-                    base_model = "google-bert/bert-base-multilingual-uncased"
-                    prefix = "bert-multilingual"
-                else:
-                    base_model = "FacebookAI/xlm-roberta-base"
-                    prefix = "xlm-roberta"
-                # handle data
-                NLI_dataset = load_dataset("facebook/xnli", datasets[idx], trust_remote_code=True)
-                tokenizer = AutoTokenizer.from_pretrained(base_model)
-                def preprocess(examples):
-                    inputs = [examples[column] for column in ["premise", "hypothesis"]]
-                    tokenized_examples = tokenizer(
-                        *inputs,
-                        padding="max_length",          # **important** – matches training
-                        truncation=True,
-                        max_length=512,
-                        return_tensors="pt",
-                    )
-                    tokenized_examples['label'] = examples["label"]
-                    return tokenized_examples
-                tokenized_dataset= NLI_dataset.map(
-                    preprocess,
-                    batched=True,
-                    remove_columns=NLI_dataset["test"].column_names
+            if bert:
+                base_model = "google-bert/bert-base-multilingual-uncased"
+                prefix = "bert-multilingual"
+            else:
+                base_model = "FacebookAI/xlm-roberta-base"
+                prefix = "xlm-roberta"
+            # handle data
+            NLI_dataset = load_dataset("facebook/xnli", datasets[idx], trust_remote_code=True)
+            tokenizer = AutoTokenizer.from_pretrained(base_model)
+            def preprocess(examples):
+                inputs = [examples[column] for column in ["premise", "hypothesis"]]
+                tokenized_examples = tokenizer(
+                    *inputs,
+                    padding="max_length",          # **important** – matches training
+                    truncation=True,
+                    max_length=512,
+                    return_tensors="pt",
+                )
+                tokenized_examples['label'] = examples["label"]
+                return tokenized_examples
+            tokenized_dataset= NLI_dataset.map(
+                preprocess,
+                batched=True,
+                remove_columns=NLI_dataset["test"].column_names
+            )
+
+            hyperparameter_results = {}
+            batch_size = 32 if base_model == "xlm-roberta" else 8
+            for l in test_lambdas:
+                nli = AutoModelForSequenceClassification.from_pretrained(
+                    f"{prefix}/{model_base}/NLI_en",
+                    local_files_only=True,
+                )
+                nli.eval()
+                accuracy = test_lang_nli(nli, f"{prefix}/{model}", base_model, tokenized_dataset["validation"], l, batch_size)
+                hyperparameter_results[l] = accuracy
+            print("hyperparamter serach results")
+            print(hyperparameter_results)
+
+            best_lambda = max(hyperparameter_results, key=hyperparameter_results.get)
+            print(best_lambda)
+            with open(f"output/{prefix}/{model_base}/NLI.txt", "a") as f:
+                print("language model", model)
+                nli = AutoModelForSequenceClassification.from_pretrained(
+                    f"{prefix}/{model_base}/NLI_en",
+                    local_files_only=True
                 )
 
-                hyperparameter_results = {}
-                batch_size = 32 if base_model == "xlm-roberta" else 8
-                for l in test_lambdas:
-                    nli = AutoModelForSequenceClassification.from_pretrained(
-                        f"{prefix}/{model_base}/NLI_en",
-                        local_files_only=True,
-                    )
-                    nli.eval()
-                    accuracy = test_lang_nli(nli, f"{prefix}/{model}", base_model, tokenized_dataset["validation"], l, batch_size)
-                    hyperparameter_results[l] = accuracy
-                print("hyperparamter serach results")
-                print(hyperparameter_results)
-
-                best_lambda = max(hyperparameter_results, key=hyperparameter_results.get)
-                print(best_lambda)
-                with open(f"output/{prefix}/{model_base}/NLI.txt", "a") as f:
-                    print("language model", model)
-                    nli = AutoModelForSequenceClassification.from_pretrained(
-                        f"{prefix}/{model_base}/NLI_en",
-                        local_files_only=True
-                    )
-
-                    nli.eval()                         # disables dropout / batch‑norm
-                    torch.set_grad_enabled(False)  
-                    accuracy= test_lang_nli(nli, f"{prefix}/{model}", base_model, tokenized_dataset["test"], best_lambda, batch_size)
-                    print(f"accuracy: {accuracy}")  
-                    f.write(f"\n======language: {model.split('_')[1]}=======\n")
-                    f.write(f"best lambda: {best_lambda}\n")
-                    f.write(f"accuracy: {accuracy}\n")
-                    f.close()
+                nli.eval()                         # disables dropout / batch‑norm
+                torch.set_grad_enabled(False)  
+                accuracy= test_lang_nli(nli, f"{prefix}/{model}", base_model, tokenized_dataset["test"], best_lambda, batch_size)
+                print(f"accuracy: {accuracy}")  
+                f.write(f"\n======language: {model.split('_')[1]}=======\n")
+                f.write(f"best lambda: {best_lambda}\n")
+                f.write(f"accuracy: {accuracy}\n")
+                f.close()
 
 
 

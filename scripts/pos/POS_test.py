@@ -70,7 +70,7 @@ def test_lang_pos(pos, language_model, pretrained_checkpoint, dataset, best_lamb
 
 if __name__ == "__main__":
     test_lambdas = [0.0, 0.1, 0.2, 0.2, 0.3, 0.4, 0.6, 0.7, 0.8, 0.9, 1.0]
-    model_bases = ["lang_en_finetuned", "base_finetuned"]
+    model_base = "base_finetuned"
     bert_values = [True, False]
     
     datasets = ["English (EN)", "Spanish (ES)", "Hindi (HI)", "German (DE)", "Chinese (ZH)"]
@@ -96,76 +96,75 @@ if __name__ == "__main__":
                     "language_zh_done"]
     for idx, model in enumerate(language_models):
         for bert in bert_values:
-            for model_base in model_bases:
-                if bert:
-                    base_model = "google-bert/bert-base-multilingual-uncased"
-                    prefix = "bert-multilingual"
-                else:
-                    base_model = "FacebookAI/xlm-roberta-base"
-                    prefix = "xlm-roberta"
-                # handle data
-                val_dataset = load_conllu_data(val_datasets[idx])
-                val_dataset = Dataset.from_pandas(val_dataset)
-                test_dataset = load_conllu_data(test_datasets[idx])
-                test_dataset = Dataset.from_pandas(test_dataset)
-                POS_dataset = DatasetDict({
-                    "validation": val_dataset,
-                    "test": test_dataset
-                })
-                tokenizer = AutoTokenizer.from_pretrained(base_model)
-                def tokenize_and_align_labels(examples):
-                    # from https://reybahl.medium.com/token-classification-in-python-with-huggingface-3fab73a6a20e
-                    tokenized_inputs = tokenizer(examples["tokens"], truncation=True, is_split_into_words=True)
-                    labels = []
-                    for i, label in enumerate(examples["pos_tags"]):
-                        word_ids = tokenized_inputs.word_ids(batch_index=i)  # Map tokens to their respective word.
-                        previous_word_idx = None
-                        label_ids = []
-                        for word_idx in word_ids:  # Set the special tokens to -100.
-                            if word_idx is None:
-                                label_ids.append(-100)
-                            elif word_idx != previous_word_idx:  # Only label the first token of a given word.
-                                label_ids.append(label2id[label[word_idx]])
-                            else:
-                                label_ids.append(-100)
-                            previous_word_idx = word_idx
-                        labels.append(label_ids)
+            if bert:
+                base_model = "google-bert/bert-base-multilingual-uncased"
+                prefix = "bert-multilingual"
+            else:
+                base_model = "FacebookAI/xlm-roberta-base"
+                prefix = "xlm-roberta"
+            # handle data
+            val_dataset = load_conllu_data(val_datasets[idx])
+            val_dataset = Dataset.from_pandas(val_dataset)
+            test_dataset = load_conllu_data(test_datasets[idx])
+            test_dataset = Dataset.from_pandas(test_dataset)
+            POS_dataset = DatasetDict({
+                "validation": val_dataset,
+                "test": test_dataset
+            })
+            tokenizer = AutoTokenizer.from_pretrained(base_model)
+            def tokenize_and_align_labels(examples):
+                # from https://reybahl.medium.com/token-classification-in-python-with-huggingface-3fab73a6a20e
+                tokenized_inputs = tokenizer(examples["tokens"], truncation=True, is_split_into_words=True)
+                labels = []
+                for i, label in enumerate(examples["pos_tags"]):
+                    word_ids = tokenized_inputs.word_ids(batch_index=i)  # Map tokens to their respective word.
+                    previous_word_idx = None
+                    label_ids = []
+                    for word_idx in word_ids:  # Set the special tokens to -100.
+                        if word_idx is None:
+                            label_ids.append(-100)
+                        elif word_idx != previous_word_idx:  # Only label the first token of a given word.
+                            label_ids.append(label2id[label[word_idx]])
+                        else:
+                            label_ids.append(-100)
+                        previous_word_idx = word_idx
+                    labels.append(label_ids)
 
-                    tokenized_inputs["labels"] = labels
-                    return tokenized_inputs
-                tokenized_dataset= POS_dataset.map(
-                    tokenize_and_align_labels,
-                    batched=True,
-                )
+                tokenized_inputs["labels"] = labels
+                return tokenized_inputs
+            tokenized_dataset= POS_dataset.map(
+                tokenize_and_align_labels,
+                batched=True,
+            )
 
-                mlm_model = AutoModelForMaskedLM.from_pretrained(
-                    base_model,
-                    dtype=torch.float32,
-                )
-                if bert:
-                    encoder = mlm_model.bert
-                else:
-                    encoder = mlm_model.roberta
-                hyperparameter_results = {}
-                for l in test_lambdas:
-                    pos_model = TokenClassificationHead(encoder, num_labels=len(id2label), bert=bert)
-                    load_model(pos_model, f"{prefix}/{model_base}/POS_en/model.safetensors", device="cpu")
-                    accuracy = test_lang_pos(pos_model, f"{prefix}/{model}", base_model, tokenized_dataset["validation"], l)
-                    hyperparameter_results[l] = accuracy
-                print("hyperparamter serach results")
-                print(hyperparameter_results)
-                best_lambda = max(hyperparameter_results, key=hyperparameter_results.get)
-                print(best_lambda)
-                with open(f"output/{prefix}/{model_base}/POS.txt", "a") as f:
-                    print("language model", model)
-                    pos_model = TokenClassificationHead(encoder, num_labels=len(id2label), bert=bert)
-                    load_model(pos_model, f"{prefix}/{model_base}/POS_en/model.safetensors", device="cpu")
-                    accuracy= test_lang_pos(pos_model, f"{prefix}/{model}", base_model, tokenized_dataset["test"], best_lambda)
-                    print(f"accuracy: {accuracy}")  
-                    f.write(f"\n======language: {model.split('_')[1]}=======\n")
-                    f.write(f"best lambda: {best_lambda}\n")
-                    f.write(f"accuracy: {accuracy}\n")
-                    f.close()
+            mlm_model = AutoModelForMaskedLM.from_pretrained(
+                base_model,
+                dtype=torch.float32,
+            )
+            if bert:
+                encoder = mlm_model.bert
+            else:
+                encoder = mlm_model.roberta
+            hyperparameter_results = {}
+            for l in test_lambdas:
+                pos_model = TokenClassificationHead(encoder, num_labels=len(id2label), bert=bert)
+                load_model(pos_model, f"{prefix}/{model_base}/POS_en/model.safetensors", device="cpu")
+                accuracy = test_lang_pos(pos_model, f"{prefix}/{model}", base_model, tokenized_dataset["validation"], l)
+                hyperparameter_results[l] = accuracy
+            print("hyperparamter serach results")
+            print(hyperparameter_results)
+            best_lambda = max(hyperparameter_results, key=hyperparameter_results.get)
+            print(best_lambda)
+            with open(f"output/{prefix}/{model_base}/POS.txt", "a") as f:
+                print("language model", model)
+                pos_model = TokenClassificationHead(encoder, num_labels=len(id2label), bert=bert)
+                load_model(pos_model, f"{prefix}/{model_base}/POS_en/model.safetensors", device="cpu")
+                accuracy= test_lang_pos(pos_model, f"{prefix}/{model}", base_model, tokenized_dataset["test"], best_lambda)
+                print(f"accuracy: {accuracy}")  
+                f.write(f"\n======language: {model.split('_')[1]}=======\n")
+                f.write(f"best lambda: {best_lambda}\n")
+                f.write(f"accuracy: {accuracy}\n")
+                f.close()
 
 
 

@@ -90,7 +90,7 @@ def train_NLI_model(model_checkpoint):
         )
 
     trainer.train()
-    trainer.save_model(f"xlm-roberta/base_finetuned/NLI_en")
+    trainer.save_model(f"bert-multilingual/base_finetuned/NLI_en")
 
 if __name__ == "__main__":
     roberta = "FacebookAI/xlm-roberta-base"

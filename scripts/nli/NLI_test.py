@@ -23,14 +23,14 @@ def test_lang_nli(nli, language_model, pretrained_checkpoint, dataset, best_lamb
     preds = []
     labels = []
     nli.to(device).eval()
-    dataset.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"])
+    dataset.set_format(type="torch", columns=["input_ids", "attention_mask", "label"])
 
     collator = DataCollatorWithPadding(tokenizer=tokenizer, padding="max_length", max_length=512)
     test_dataloader = DataLoader(dataset, batch_size=batch_size, collate_fn=collator, shuffle=False)
     with torch.no_grad():
         for batch in tqdm(test_dataloader):
-            inputs = {k: v.to(device) for k, v in batch.items() if k != "label"}
-            logits = model(**inputs).logits
+            inputs = {k: v.to(device) for k, v in batch.items() if k != "labels"}
+            logits = nli(**inputs).logits
             predictions = torch.argmax(logits, dim=-1).cpu().numpy()
             preds.extend(predictions)
             labels.extend(batch["labels"].cpu().numpy())
@@ -39,12 +39,12 @@ def test_lang_nli(nli, language_model, pretrained_checkpoint, dataset, best_lamb
     accuracy = correct / total if total > 0 else 0
     nli.to("cpu")
     del nli
-    gc.collet()
+    gc.collect()
     return accuracy
 
 if __name__ == "__main__":
     test_lambdas = [0.0, 0.1, 0.2, 0.2, 0.3, 0.4, 0.6, 0.7, 0.8, 0.9, 1.0]
-    model_bases = ["lang_en_finetuned", "base_finetuned"]
+    model_bases = ["base_finetuned"]
     bert_values = [True, False]
     
     datasets = ["en", "es", "hi", "de", "zh"]
@@ -83,13 +83,14 @@ if __name__ == "__main__":
                 )
 
                 hyperparameter_results = {}
+                batch_size = 32 if base_model == "xlm-roberta" else 8
                 for l in test_lambdas:
-                    model = AutoModelForSequenceClassification.from_pretrained(
+                    nli = AutoModelForSequenceClassification.from_pretrained(
                         f"{prefix}/{model_base}/NLI_en",
-                        device_map="auto",               # puts the model on GPU if available
+                        local_files_only=True,
                     )
-                    model.eval()  
-                    accuracy = test_lang_nli(model, f"{prefix}/{model}", base_model, tokenized_dataset["validation"], l)
+                    nli.eval()
+                    accuracy = test_lang_nli(nli, f"{prefix}/{model}", base_model, tokenized_dataset["validation"], l, batch_size)
                     hyperparameter_results[l] = accuracy
                 print("hyperparamter serach results")
                 print(hyperparameter_results)
@@ -98,14 +99,14 @@ if __name__ == "__main__":
                 print(best_lambda)
                 with open(f"output/{prefix}/{model_base}/NLI.txt", "a") as f:
                     print("language model", model)
-                    model = AutoModelForSequenceClassification.from_pretrained(
-                        f"{prefix}/NLI_en",
-                        device_map="auto",               # puts the model on GPU if available
+                    nli = AutoModelForSequenceClassification.from_pretrained(
+                        f"{prefix}/{model_base}/NLI_en",
+                        local_files_only=True
                     )
 
-                    model.eval()                         # disables dropout / batch‑norm
+                    nli.eval()                         # disables dropout / batch‑norm
                     torch.set_grad_enabled(False)  
-                    accuracy= test_lang_nli(model, f"{prefix}/{model}", base_model, tokenized_dataset["test"], best_lambda)
+                    accuracy= test_lang_nli(nli, f"{prefix}/{model}", base_model, tokenized_dataset["test"], best_lambda, batch_size)
                     print(f"accuracy: {accuracy}")  
                     f.write(f"\n======language: {model.split('_')[1]}=======\n")
                     f.write(f"best lambda: {best_lambda}\n")

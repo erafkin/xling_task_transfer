@@ -68,12 +68,12 @@ def train_NLI_model(model_checkpoint):
 
     set_trainable(model, train_encoder=True) 
     training_args = TrainingArguments(
-            output_dir=f"xlm-roberta/base_finetuned/NLI_en",
+            output_dir=f"bert-multilingual/base_finetuned/NLI_en",
             eval_strategy="epoch",
             learning_rate=2e-5,
             num_train_epochs=3, 
             weight_decay=0.01,
-            per_device_train_batch_size=32, # 8 for bert, 32 for roberta (roberta wasn't learning anything)
+            per_device_train_batch_size=32,
             per_device_eval_batch_size=32,
             push_to_hub=False,
             save_strategy="epoch",
@@ -95,4 +95,4 @@ def train_NLI_model(model_checkpoint):
 if __name__ == "__main__":
     roberta = "FacebookAI/xlm-roberta-base"
     bert = "google-bert/bert-base-multilingual-uncased"
-    train_NLI_model(roberta)
+    train_NLI_model(bert)

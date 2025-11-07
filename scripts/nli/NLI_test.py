@@ -24,13 +24,13 @@ def test_lang_nli(nli, language_model, pretrained_checkpoint, dataset, best_lamb
     preds = []
     labels = []
     nli.to(device).eval()
-    dataset.set_format(type="torch", columns=["input_ids", "attention_mask", "label"])
+    #dataset.set_format(type="torch", columns=["input_ids", "attention_mask", "label"])
 
     collator = DataCollatorWithPadding(tokenizer=tokenizer, padding="max_length", max_length=512)
     test_dataloader = DataLoader(dataset, batch_size=batch_size, collate_fn=collator, shuffle=False)
     with torch.no_grad():
         for batch in tqdm(test_dataloader):
-            inputs = {k: v.to(device) for k, v in batch.items() if k != "labels"}
+            inputs = {k: v.to(device) for k, v in batch.items() if k != "label"}
             logits = nli(**inputs).logits
             predictions = torch.argmax(logits, dim=-1).cpu().numpy()
             preds.extend(predictions)
@@ -55,6 +55,7 @@ if __name__ == "__main__":
                     "language_de_done", 
                     "language_zh_done"]
     overall_hyperparameter_results = {}
+    torch.set_grad_enabled(False)  
     for idx, model in enumerate(language_models):
         overall_hyperparameter_results[model] = {}
         for bert in bert_values:
@@ -86,7 +87,8 @@ if __name__ == "__main__":
             )
 
             hyperparameter_results = {}
-            batch_size = 32 if base_model == "xlm-roberta" else 8
+            batch_size = 32
+            torch.set_grad_enabled(False)
             for l in test_lambdas:
                 nli = AutoModelForSequenceClassification.from_pretrained(
                     f"{prefix}/{model_base}/NLI_en",
@@ -108,8 +110,7 @@ if __name__ == "__main__":
                     local_files_only=True
                 )
 
-                nli.eval()                         # disables dropout / batch‑norm
-                torch.set_grad_enabled(False)  
+                nli.eval()                         # disables dropout / batch‑norm  
                 accuracy= test_lang_nli(nli, f"{prefix}/{model}", base_model, tokenized_dataset["test"], best_lambda, batch_size)
                 print(f"accuracy: {accuracy}")  
                 f.write(f"\n======language: {model.split('_')[1]}=======\n")

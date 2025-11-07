@@ -8,6 +8,7 @@ from safetensors.torch import load_model
 from scripts.task_vectors import TaskVector
 from scripts.task_utils import TokenClassificationHead, load_conllu_data
 import gc
+import json
 
 def get_language_vector(base_model: str, saved_language: str):
     lang_vector = TaskVector(pretrained_model=AutoModelForMaskedLM.from_pretrained(base_model),
@@ -94,8 +95,11 @@ if __name__ == "__main__":
                     "language_hi_done", 
                     "language_de_done", 
                     "language_zh_done"]
+    overall_hyperparameter_results = {}
     for idx, model in enumerate(language_models):
+        overall_hyperparameter_results[model] = {}
         for bert in bert_values:
+            overall_hyperparameter_results[model]["bert" if bert else "roberta"] = {}
             if bert:
                 base_model = "google-bert/bert-base-multilingual-uncased"
                 prefix = "bert-multilingual"
@@ -153,6 +157,7 @@ if __name__ == "__main__":
                 hyperparameter_results[l] = accuracy
             print("hyperparamter serach results")
             print(hyperparameter_results)
+            overall_hyperparameter_results[model]["bert" if bert else "roberta"] = hyperparameter_results
             best_lambda = max(hyperparameter_results, key=hyperparameter_results.get)
             print(best_lambda)
             with open(f"output/{prefix}/{model_base}/POS.txt", "a") as f:
@@ -165,6 +170,9 @@ if __name__ == "__main__":
                 f.write(f"best lambda: {best_lambda}\n")
                 f.write(f"accuracy: {accuracy}\n")
                 f.close()
+    with open(f"output/POS_pretrained_hyperparameter_search.json", "w") as f:
+        json.dump(overall_hyperparameter_results, f, indent=4)
+        f.close()
 
 
 

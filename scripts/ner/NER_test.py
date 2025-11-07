@@ -78,8 +78,11 @@ if __name__ == "__main__":
                     "language_hi_done", 
                     "language_de_done", 
                     "language_zh_done"]
+    overall_hyperparameter_results = {}
     for idx, model in enumerate(language_models):
+        overall_hyperparameter_results[model] = {}
         for bert in bert_values:
+            overall_hyperparameter_results[model]["bert" if bert else "roberta"] = {}
             if bert:
                 base_model = "google-bert/bert-base-multilingual-uncased"
                 prefix = "bert-multilingual"
@@ -130,6 +133,7 @@ if __name__ == "__main__":
                 hyperparameter_results[l] = accuracy
             print("hyperparamter serach results")
             print(hyperparameter_results)
+            overall_hyperparameter_results[model]["bert" if bert else "roberta"] = hyperparameter_results
 
             best_lambda = max(hyperparameter_results, key=hyperparameter_results.get)
             print(best_lambda)
@@ -143,6 +147,9 @@ if __name__ == "__main__":
                 f.write(f"best lambda: {best_lambda}\n")
                 f.write(f"accuracy: {accuracy}\n")
                 f.close()
+    with open(f"output/NER_pretrained_hyperparameter_search.json", "w") as f:
+        json.dump(overall_hyperparameter_results, f, indent=4)
+        f.close()
 
 
 

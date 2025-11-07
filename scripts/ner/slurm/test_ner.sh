@@ -16,4 +16,4 @@ python3.11 -m venv venv
 source venv/bin/activate
 pip3 install -r requirements.txt
 python3.11 --version
-python3.11 scripts/NER_test.py 
+python3.11 scripts/ner/NER_test.py 

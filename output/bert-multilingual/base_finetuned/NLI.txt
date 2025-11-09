@@ -1,9 +1,5 @@
 
 ======language: en=======
-best lambda: 1.0
-accuracy: 0.5992015968063872
-
-======language: en=======
 best lambda: 0.0
 accuracy: 0.822754491017964
 

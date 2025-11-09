@@ -11,3 +11,4 @@ umap-learn
 matplotlib
 lang2vec
 git+https://github.com/antonisa/lang2vec
+urielplus

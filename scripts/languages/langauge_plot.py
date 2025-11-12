@@ -1,9 +1,7 @@
-import numpy as np
 import umap
 from scripts.task_vectors import TaskVector
 from transformers import AutoModelForMaskedLM
 import matplotlib.pyplot as plt
-from sklearn.manifold import TSNE
 
 
 bert_model = "google-bert/bert-base-multilingual-uncased"
@@ -27,18 +25,3 @@ for i, txt in enumerate(lang):
 plt.title('BERT Language Vectors')
 plt.savefig('output/languages/umap_plot.png', dpi=300, bbox_inches='tight') # Saves as PNG, 300 DPI, tight bounding box
 plt.close()
-
-
-# TSNE is crashing the computer??
-# tsne = TSNE(n_components=2, perplexity=1, random_state=42)
-# X_embedded = tsne.fit_transform(np.array(data))
-# print("plotted")
-
-# plt.figure(figsize=(8, 6))
-# scatter = plt.scatter(X_embedded[:, 0], X_embedded[:, 1], c=lang, cmap='viridis', s=50, alpha=0.8)
-# plt.title('t-SNE Visualization of Languages')
-# plt.xlabel('t-SNE Component 1')
-# plt.ylabel('t-SNE Component 2')
-# plt.colorbar(scatter, label='languages')
-# plt.savefig('output/languages/tsne_plot.png', dpi=300, bbox_inches='tight') # Saves as PNG, 300 DPI, tight bounding box
-# plt.close()

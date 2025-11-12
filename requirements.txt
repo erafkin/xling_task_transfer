@@ -5,7 +5,6 @@ datasets<4
 accelerate
 bitsandbytes
 evaluate
-seqeval
-scikit-learn
-matplotlib
-urielplus
+# scikit-learn
+# matplotlib
+# urielplus

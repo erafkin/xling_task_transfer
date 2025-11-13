@@ -125,5 +125,5 @@ def train_NER_model(model_checkpoint):
 
 if __name__ == "__main__":
     roberta = "FacebookAI/xlm-roberta-base"
-    bert = "google-bert/bert-base-multilingual-uncased"
-    train_NER_model(roberta)
+    bert = "google-bert/bert-base-multilingual-cased"
+    train_NER_model(bert)

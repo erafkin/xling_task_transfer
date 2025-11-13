@@ -94,5 +94,5 @@ def train_NLI_model(model_checkpoint):
 
 if __name__ == "__main__":
     roberta = "FacebookAI/xlm-roberta-base"
-    bert = "google-bert/bert-base-multilingual-uncased"
+    bert = "google-bert/bert-base-multilingual-cased"
     train_NLI_model(bert)

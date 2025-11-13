@@ -100,7 +100,7 @@ def train_POS_model(model_checkpoint, GUM_folder: str = "GUM_en"):
     set_trainable(model, train_encoder=True) 
 
     training_args = TrainingArguments(
-            output_dir=f"xlm-roberta/lang_en_finetuned/POS_en",
+            output_dir=f"POS_en",
             eval_strategy="epoch",
             learning_rate=2e-5,
             num_train_epochs=3, 
@@ -122,9 +122,9 @@ def train_POS_model(model_checkpoint, GUM_folder: str = "GUM_en"):
         )
 
     trainer.train()
-    trainer.save_model(f"xlm-roberta/lang_en_finetuned/POS_en")
+    trainer.save_model(f"POS_en")
 
 if __name__ == "__main__":
     roberta = "FacebookAI/xlm-roberta-base"
-    bert = "google-bert/bert-base-multilingual-uncased"
-    train_POS_model(roberta)
+    bert = "google-bert/bert-base-multilingual-cased"
+    train_POS_model(bert)

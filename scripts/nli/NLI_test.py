@@ -61,7 +61,7 @@ if __name__ == "__main__":
         for bert in bert_values:
             overall_hyperparameter_results[model]["bert" if bert else "roberta"] = {}
             if bert:
-                base_model = "google-bert/bert-base-multilingual-uncased"
+                base_model = "google-bert/bert-base-multilingual-cased"
                 prefix = "bert-multilingual"
             else:
                 base_model = "FacebookAI/xlm-roberta-base"

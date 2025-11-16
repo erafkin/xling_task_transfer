@@ -1,0 +1,133 @@
+import torch
+from torch import nn
+import numpy as np
+from transformers import AutoTokenizer, AutoConfig, AutoModelForMaskedLM, Trainer, TrainingArguments
+from datasets import Dataset, DatasetDict
+
+from scripts.dp.dp_model import TransformerForBiaffineParsing, DataCollatorForDependencyParsing
+from scripts.task_utils import load_conllu_data
+
+def train_DP_model(model_checkpoint, GUM_folder: str = "GUM_en"):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    train_dataset = load_conllu_data(f"{GUM_folder}/en_gum-ud-train.conllu")
+    dev_dataset = load_conllu_data(f"{GUM_folder}/en_gum-ud-dev.conllu")
+    dataset = DatasetDict({"train": Dataset.from_pandas(train_dataset), "dev": Dataset.from_pandas(dev_dataset)})
+    dep_rel_tags = sorted({tag for ex in dataset["train"] for tag in ex["dep_rel"]})
+    label2id = {tag: i for i, tag in enumerate(dep_rel_tags)}
+    id2label = {i: tag for tag, i in label2id.items()}
+    tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
+    data_collator = DataCollatorForDependencyParsing(tokenizer=tokenizer, max_length=tokenizer.model_max_length)
+    def preprocess(examples):
+            # Credit: https://github.com/cambridgeltl/composable-sft/blob/main/examples/dependency-parsing/run_dp.py
+            features = {}
+            for idx in range(len(examples['tokens'])):
+                invalid_indices = set(i for i, head in enumerate(examples['dep_head'][idx]) if head in ['_', 'None'])
+                for col in ['tokens', 'dep_head', 'dep_rel']:
+                    examples[col][idx] = [v for i, v in enumerate(examples[col][idx]) if i not in invalid_indices]
+
+                tokens = [tokenizer.tokenize(w) for w in examples['tokens'][idx]]
+                word_lengths = [len(w) for w in tokens]
+
+                tokenized_inputs = tokenizer(
+                    examples['tokens'][idx],
+                    padding=True,
+                    truncation=True,
+                    is_split_into_words=True,
+                )
+
+                tokenized_inputs['labels_arcs'] = [int(x) for x in examples['dep_head'][idx]]
+                tokenized_inputs['labels_rels'] = [label2id[x.split(':')[0]] for x in examples['dep_rel'][idx]]
+
+                # determine start indices of words
+                tokenized_inputs['word_starts'] = np.cumsum([1] + word_lengths).tolist()
+
+                for k, v in tokenized_inputs.items():
+                    features.setdefault(k, []).append(v)
+
+            return features
+    def compute_metrics(eval_pred):
+        # adapted from https://github.com/cambridgeltl/composable-sft/blob/main/examples/dependency-parsing/dp/utils_udp.py#L87
+        
+        predicted_head, predicted_arc, head_labels, arc_labels = eval_pred
+        predicted_indices = predicted_head.long()
+        predicted_labels = predicted_arc.long()
+        gold_indices = head_labels.long()
+        gold_labels = arc_labels.long()
+
+        correct_indices = predicted_indices.eq(gold_indices).long()
+        correct_labels = predicted_labels.eq(gold_labels).long()
+        correct_labels_and_indices = correct_indices * correct_labels
+
+        unlabeled_correct += correct_indices.sum().item()
+        labeled_correct += correct_labels_and_indices.sum().item()
+        total_words += correct_indices.numel()
+
+        if total_words > 0.0:
+            unlabeled_attachment_score = unlabeled_correct / total_words
+            labeled_attachment_score = labeled_correct / total_words
+        return {
+            "uas": unlabeled_attachment_score * 100,
+            "las": labeled_attachment_score * 100,
+        }
+
+    tokenized_dataset= dataset.map(
+        preprocess,
+        batched=True,
+        remove_columns=["tokens", "pos_tags", "dep_rel", "dep_head"]
+    )
+    config = AutoConfig.from_pretrained(model_checkpoint)
+    mlm_model = AutoModelForMaskedLM.from_pretrained(
+        model_checkpoint,
+        config=config,
+        dtype=torch.float32,
+    ).to(device)
+
+    if "roberta" in model_checkpoint:
+        encoder = mlm_model.roberta
+        is_bert = False
+    else:
+        encoder = mlm_model.bert
+        is_bert = True
+    model = TransformerForBiaffineParsing(encoder=encoder, num_labels=len(id2label), bert=is_bert)
+
+    def set_trainable(mod: nn.Module, train_encoder: bool = False):
+        for n, p in mod.named_parameters():
+            if "classifier" in n:
+                p.requires_grad = True
+            else:
+                p.requires_grad = train_encoder
+        mod.train()
+    set_trainable(model, train_encoder=True) 
+    output_prefix = "bert-multilingual/base_finetuned" if is_bert else  "xlm-roberta/base_finetuned" 
+
+    training_args = TrainingArguments(
+            output_dir=f"{output_prefix}/DP_en",
+            eval_strategy="epoch",
+            learning_rate=2e-5,
+            num_train_epochs=3, 
+            weight_decay=0.01,
+            per_device_train_batch_size=8,
+            per_device_eval_batch_size=8,
+            push_to_hub=False,
+            save_strategy="no",
+            fp16=False
+        )    
+    trainer = Trainer(
+            model=model,
+            args=training_args,
+            train_dataset=tokenized_dataset["train"],
+            eval_dataset=tokenized_dataset["dev"],
+            data_collator=data_collator,
+            tokenizer=tokenizer,
+            compute_metrics=compute_metrics,
+        )
+
+    trainer.train()
+    trainer.save_model(f"{output_prefix}/DP_en")
+
+if __name__ == "__main__":
+    roberta = "FacebookAI/xlm-roberta-base"
+    bert = "google-bert/bert-base-multilingual-cased"
+    train_DP_model(bert)
+
+

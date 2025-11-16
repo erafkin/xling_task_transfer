@@ -97,9 +97,10 @@ def train_NER_model(model_checkpoint):
         mod.train()
 
     set_trainable(model, train_encoder=True) 
+    output_prefix = "bert-multilingual/base_finetuned" if is_bert else  "xlm-roberta/base_finetuned" 
 
     training_args = TrainingArguments(
-            output_dir=f"NER_en",
+            output_dir=f"{output_prefix}/NER_en",
             eval_strategy="epoch",
             learning_rate=2e-5,
             num_train_epochs=3, 
@@ -121,7 +122,7 @@ def train_NER_model(model_checkpoint):
         )
 
     trainer.train()
-    trainer.save_model(f"NER_en")
+    trainer.save_model(f"{output_prefix}/NER_en")
 
 if __name__ == "__main__":
     roberta = "FacebookAI/xlm-roberta-base"

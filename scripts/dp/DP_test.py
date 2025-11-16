@@ -33,7 +33,10 @@ def compute_metrics(eval_pred):
     # adapted from https://github.com/cambridgeltl/composable-sft/blob/main/examples/dependency-parsing/dp/utils_udp.py#L87
     
     predicted_head, predicted_arc, head_labels, arc_labels = eval_pred
-
+    predicted_head = torch.Tensor(predicted_head)
+    predicted_arc = torch.Tensor(predicted_arc)
+    head_labels = torch.Tensor(head_labels)
+    arc_labels = torch.Tensor(arc_labels)
     correct_indices = predicted_head.eq(head_labels)
     correct_labels = predicted_arc.eq(arc_labels)
     correct_labels_and_indices = correct_indices * correct_labels

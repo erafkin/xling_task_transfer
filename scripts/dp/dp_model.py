@@ -124,7 +124,7 @@ class TransformerForBiaffineParsing(nn.Module):
 
         if len(arc_preds.shape) == 2:
             return loss, rel_preds, arc_preds.unsqueeze(0)
-        return outputs
+        return outputs # should be loss, rel_preds, arc_preds
 
     def _merge_subword_tokens(self, subword_outputs, word_starts):
         instances = []
@@ -358,8 +358,6 @@ class DependencyParsingTrainer(Trainer):
             model = self.model
         # Note: in torch.distributed mode, there's no point in wrapping the model
         # inside a DistributedDataParallel as we'll be under `no_grad` anyways.
-
-        batch_size = dataloader.batch_size
         eval_losses: List[float] = []
         model.eval()
 

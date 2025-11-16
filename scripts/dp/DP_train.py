@@ -4,7 +4,7 @@ import numpy as np
 from transformers import AutoTokenizer, AutoConfig, AutoModelForMaskedLM, Trainer, TrainingArguments
 from datasets import Dataset, DatasetDict
 
-from scripts.dp.dp_model import TransformerForBiaffineParsing, DataCollatorForDependencyParsing, DependencyParsingTrainer
+from scripts.dp.dp_model import TransformerForBiaffineParsing, DataCollatorForDependencyParsing
 from scripts.task_utils import load_conllu_data
 
 
@@ -47,30 +47,6 @@ def train_DP_model(model_checkpoint, GUM_folder: str = "GUM_en"):
                     features.setdefault(k, []).append(v)
 
             return features
-    def compute_metrics(eval_pred):
-        # adapted from https://github.com/cambridgeltl/composable-sft/blob/main/examples/dependency-parsing/dp/utils_udp.py#L87
-        
-        predicted_head, predicted_arc, head_labels, arc_labels = eval_pred
-        predicted_indices = predicted_head.long()
-        predicted_labels = predicted_arc.long()
-        gold_indices = head_labels.long()
-        gold_labels = arc_labels.long()
-
-        correct_indices = predicted_indices.eq(gold_indices).long()
-        correct_labels = predicted_labels.eq(gold_labels).long()
-        correct_labels_and_indices = correct_indices * correct_labels
-
-        unlabeled_correct += correct_indices.sum().item()
-        labeled_correct += correct_labels_and_indices.sum().item()
-        total_words += correct_indices.numel()
-
-        if total_words > 0.0:
-            unlabeled_attachment_score = unlabeled_correct / total_words
-            labeled_attachment_score = labeled_correct / total_words
-        return {
-            "uas": unlabeled_attachment_score * 100,
-            "las": labeled_attachment_score * 100,
-        }
 
     tokenized_dataset= dataset.map(
         preprocess,
@@ -113,10 +89,8 @@ def train_DP_model(model_checkpoint, GUM_folder: str = "GUM_en"):
             per_device_eval_batch_size=8,
             push_to_hub=False,
             save_strategy="no",
-            fp16=True,
-            # no_cuda=True   
-            )    
-    trainer = DependencyParsingTrainer(
+            fp16=True            )    
+    trainer = Trainer(
             model=model,
             args=training_args,
             train_dataset=tokenized_dataset["train"],

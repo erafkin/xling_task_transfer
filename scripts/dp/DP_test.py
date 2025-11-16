@@ -41,9 +41,9 @@ def compute_metrics(eval_pred):
     correct_labels = predicted_arc.eq(arc_labels)
     correct_labels_and_indices = correct_indices * correct_labels
 
-    unlabeled_correct += correct_indices.sum().item()
-    labeled_correct += correct_labels_and_indices.sum().item()
-    total_words += correct_indices.numel()
+    unlabeled_correct = correct_indices.sum().item()
+    labeled_correct = correct_labels_and_indices.sum().item()
+    total_words = correct_indices.numel()
 
     if total_words > 0.0:
         unlabeled_attachment_score = unlabeled_correct / total_words

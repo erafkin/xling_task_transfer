@@ -21,31 +21,6 @@ def apply_language_vector_to_model(dp_model_checkpoint: str, language_vector:Tas
     dp_model = language_vector.apply_to(dp_model_checkpoint, scaling_coef=lambda_coef)
     return dp_model
 
-def compute_metrics(predictions, labels):
-
-    predicted_head, predicted_arc = predictions
-    head_labels, arc_labels = labels
-    predicted_indices = predicted_head.long()
-    predicted_labels = predicted_arc.long()
-    gold_indices = head_labels.long()
-    gold_labels = arc_labels.long()
-
-    correct_indices = predicted_indices.eq(gold_indices).long()
-    correct_labels = predicted_labels.eq(gold_labels).long()
-    correct_labels_and_indices = correct_indices * correct_labels
-
-    unlabeled_correct += correct_indices.sum().item()
-    labeled_correct += correct_labels_and_indices.sum().item()
-    total_words += correct_indices.numel()
-
-    if total_words > 0.0:
-        unlabeled_attachment_score = unlabeled_correct / total_words
-        labeled_attachment_score = labeled_correct / total_words
-    return {
-        "uas": unlabeled_attachment_score * 100,
-        "las": labeled_attachment_score * 100,
-    }
-
 def get_label_mapping():
     dp_dataset = load_conllu_data("GUM_en/en_gum-ud-train.conllu")
     dp_dataset = Dataset.from_pandas(dp_dataset)
@@ -84,6 +59,7 @@ def test_lang_dp(dp, language_model, pretrained_checkpoint, dataset, best_lambda
     lv = get_language_vector(pretrained_checkpoint, language_model)
     dp = apply_language_vector_to_model(dp, lv, best_lambda)
     dp.to(device).eval()
+    print(dataset)
     dataset.set_format(type="torch", columns=["input_ids", "attention_mask", 'labels_arcs', 'labels_rels'])
 
     collator = DataCollatorForTokenClassification(tokenizer=tokenizer)

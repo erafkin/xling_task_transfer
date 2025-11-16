@@ -68,7 +68,7 @@ def test_lang_ner(ner, language_model, pretrained_checkpoint, dataset, best_lamb
     return accuracy
 
 if __name__ == "__main__":
-    test_lambdas = [0.0, 0.1, 0.2, 0.2, 0.3, 0.4, 0.6, 0.7, 0.8, 0.9, 1.0]
+    test_lambdas = [0.0, 0.1, 0.2, 0.3, 0.4, 0.6, 0.7, 0.8, 0.9, 1.0]
     model_base = "base_finetuned"
     bert_values = [True, False]
     

@@ -4,8 +4,9 @@ import numpy as np
 from transformers import AutoTokenizer, AutoConfig, AutoModelForMaskedLM, Trainer, TrainingArguments
 from datasets import Dataset, DatasetDict
 
-from scripts.dp.dp_model import TransformerForBiaffineParsing, DataCollatorForDependencyParsing
+from scripts.dp.dp_model import TransformerForBiaffineParsing, DataCollatorForDependencyParsing, DependencyParsingTrainer
 from scripts.task_utils import load_conllu_data
+
 
 def train_DP_model(model_checkpoint, GUM_folder: str = "GUM_en"):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -109,18 +110,19 @@ def train_DP_model(model_checkpoint, GUM_folder: str = "GUM_en"):
             num_train_epochs=3, 
             weight_decay=0.01,
             per_device_train_batch_size=8,
-            per_device_eval_batch_size=1,
+            per_device_eval_batch_size=32,
             push_to_hub=False,
             save_strategy="no",
-            fp16=False        )    
-    trainer = Trainer(
+            fp16=False,
+            no_cuda=True   
+            )    
+    trainer = DependencyParsingTrainer(
             model=model,
             args=training_args,
             train_dataset=tokenized_dataset["train"],
             eval_dataset=tokenized_dataset["dev"],
             data_collator=data_collator,
             tokenizer=tokenizer,
-            compute_metrics=compute_metrics,
         )
 
     trainer.train()

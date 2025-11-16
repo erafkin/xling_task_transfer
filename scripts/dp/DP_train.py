@@ -103,12 +103,13 @@ def train_DP_model(model_checkpoint, GUM_folder: str = "GUM_en"):
 
     training_args = TrainingArguments(
             output_dir=f"{output_prefix}/DP_en",
-            eval_strategy="epoch",
+            eval_strategy="steps",
+            eval_steps=250,
             learning_rate=2e-5,
             num_train_epochs=3, 
             weight_decay=0.01,
             per_device_train_batch_size=8,
-            per_device_eval_batch_size=8,
+            per_device_eval_batch_size=1,
             push_to_hub=False,
             save_strategy="no",
             fp16=False        )    

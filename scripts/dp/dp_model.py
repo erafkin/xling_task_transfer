@@ -212,6 +212,10 @@ class DataCollatorForDependencyParsing:
     max_length: Optional[int] = None
 
     def __call__(self, features):
+        for f in features:
+            for k in f:
+                if isinstance(f[k], torch.Tensor):
+                    f[k] = f[k].tolist()
         batch = self.tokenizer.pad(
             features,
             padding=True,
@@ -223,9 +227,10 @@ class DataCollatorForDependencyParsing:
             if k in batch:
                 for i, example in enumerate(batch[k]):
                     if self.tokenizer.padding_side == 'right':
-                        example += (seq_len - len(example)) * [self.tokenizer.pad_token_id]
+                        if isinstance(example, torch.Tensor):
+                            example = example.tolist()
+                        example +=  (seq_len - len(example)) * [self.tokenizer.pad_token_id]
                     else:
                         batch[k][i] = example + (seq_len - len(example)) * [self.tokenizer.pad_token_id]
-
         batch = {k: torch.tensor(v, dtype=torch.int64) for k, v in batch.items()}
         return batch

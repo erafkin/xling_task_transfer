@@ -94,7 +94,8 @@ def test_lang_dp(dp, language_model, pretrained_checkpoint, dataset, best_lambda
     lab_rels = []
     with torch.no_grad():
         for batch in tqdm(test_dataloader):
-            inputs = {k: v.to(device) for k, v in batch.items() if k != "label"}
+            print(batch)
+            inputs = {k: v.to(device) for k, v in batch.items() if (k != "labels_arcs" and k != "labels_rels")}
             _, (rel_preds, arc_preds), _ = dp(**inputs)
             mask = inputs["labels_arcs"].ne(dp.pad_token_id)
             predictions_arcs = torch.argmax(arc_preds, dim=-1)[mask]
@@ -104,7 +105,7 @@ def test_lang_dp(dp, language_model, pretrained_checkpoint, dataset, best_lambda
             predictions_rels, labels_rels = rel_preds[mask], inputs["labels_rels"][mask]
             predictions_rels = predictions_rels[torch.arange(len(labels_arcs)), labels_arcs]
             predictions_rels = torch.argmax(predictions_rels, dim=-1)
-
+            print(predictions_arcs, predictions_rels, labels_arcs, labels_rels)
             preds_arcs.extend(predictions_arcs)
             preds_rels.extend(predictions_rels)
             lab_arcs.extend(labels_arcs)

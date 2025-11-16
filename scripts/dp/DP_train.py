@@ -30,7 +30,8 @@ def train_DP_model(model_checkpoint, GUM_folder: str = "GUM_en"):
 
                 tokenized_inputs = tokenizer(
                     examples['tokens'][idx],
-                    padding=True,
+                    padding="max_length",
+                    max_length=tokenizer.model_max_length,
                     truncation=True,
                     is_split_into_words=True,
                 )
@@ -110,8 +111,7 @@ def train_DP_model(model_checkpoint, GUM_folder: str = "GUM_en"):
             per_device_eval_batch_size=8,
             push_to_hub=False,
             save_strategy="no",
-            fp16=False
-        )    
+            fp16=False        )    
     trainer = Trainer(
             model=model,
             args=training_args,

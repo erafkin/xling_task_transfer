@@ -105,9 +105,8 @@ class TransformerForBiaffineParsing(nn.Module):
         outs = self.dropout(out_trans[0])
 
         word_outputs_deps = self._merge_subword_tokens(outs, word_starts)
-
-        # adding the CLS representation as the representation for the "root" parse token -- this will be a problem for reoberta
-        word_outputs_heads = torch.cat([out_trans[1].unsqueeze(1), word_outputs_deps], dim=1)
+        # adding the CLS representation as the representation for the "root" parse token -- will this be a problem for roberta?
+        word_outputs_heads = torch.cat([out_trans[0], word_outputs_deps], dim=1)
 
         arc_preds = self.biaffine_arcs(word_outputs_deps, word_outputs_heads)
         arc_preds = arc_preds.squeeze()

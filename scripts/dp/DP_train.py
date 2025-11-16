@@ -96,7 +96,7 @@ def train_DP_model(model_checkpoint, GUM_folder: str = "GUM_en"):
             train_dataset=tokenized_dataset["train"],
             eval_dataset=tokenized_dataset["dev"],
             data_collator=data_collator,
-            tokenizer=tokenizer,
+            tokenizer=tokenizer, # no training results because it was crashing the GPU
         )
 
     trainer.train()

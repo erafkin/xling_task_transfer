@@ -110,11 +110,11 @@ def train_DP_model(model_checkpoint, GUM_folder: str = "GUM_en"):
             num_train_epochs=3, 
             weight_decay=0.01,
             per_device_train_batch_size=8,
-            per_device_eval_batch_size=32,
+            per_device_eval_batch_size=8,
             push_to_hub=False,
             save_strategy="no",
-            fp16=False,
-            no_cuda=True   
+            fp16=True,
+            # no_cuda=True   
             )    
     trainer = DependencyParsingTrainer(
             model=model,

@@ -80,8 +80,7 @@ def train_DP_model(model_checkpoint, GUM_folder: str = "GUM_en"):
 
     training_args = TrainingArguments(
             output_dir=f"{output_prefix}/DP_en",
-            eval_strategy="steps",
-            eval_steps=250,
+            eval_strategy="no",
             learning_rate=2e-5,
             num_train_epochs=3, 
             weight_decay=0.01,

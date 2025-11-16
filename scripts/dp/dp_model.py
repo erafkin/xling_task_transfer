@@ -71,7 +71,7 @@ class TransformerForBiaffineParsing(nn.Module):
             self.pad_token_id = self.bert.config.pad_token_id
         else:
             self.roberta = encoder
-            self.classifier = self.roberta.config.hidden_size
+            self.encoder_hidden_size = self.roberta.config.hidden_size
             self.pad_token_id = self.roberta.config.pad_token_id
 
         self.biaffine_arcs = Biaffine(n_in=self.encoder_hidden_size, bias_x=True, bias_y=False)

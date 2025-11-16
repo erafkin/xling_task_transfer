@@ -14,7 +14,7 @@ pip install -r requirements.txt
 ```
 
 ## Repository Structure 
-Code is broken down for training and testing each task (NLI, NER, POS, and DP (tbd)) and also for language finetuning. Each script also has a slurm script for running on an HPC. 
+Code is broken down for training and testing each task (NLI, NER, POS, and DP) and also for language finetuning. Each script also has a slurm script for running on an HPC. 
 
 Results are in the output folder. There is the perplexity of the language models before and after finetuning, as well as the cosine similarity between the language vectors and english. There is an attempt at a plot but at the moment im not quite sure it is showing anything helpful/real. The task output can be found in each transformer base folder. There are the results from applying the task vectors to the base models trained from the Huggingface checkpoint as well as trained from the finetuned English, although the results don't vary that much. 
 

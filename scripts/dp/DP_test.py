@@ -33,13 +33,9 @@ def compute_metrics(eval_pred):
     # adapted from https://github.com/cambridgeltl/composable-sft/blob/main/examples/dependency-parsing/dp/utils_udp.py#L87
     
     predicted_head, predicted_arc, head_labels, arc_labels = eval_pred
-    predicted_indices = predicted_head.long()
-    predicted_labels = predicted_arc.long()
-    gold_indices = head_labels.long()
-    gold_labels = arc_labels.long()
 
-    correct_indices = predicted_indices.eq(gold_indices).long()
-    correct_labels = predicted_labels.eq(gold_labels).long()
+    correct_indices = predicted_head.eq(head_labels)
+    correct_labels = predicted_arc.eq(arc_labels)
     correct_labels_and_indices = correct_indices * correct_labels
 
     unlabeled_correct += correct_indices.sum().item()

@@ -94,7 +94,6 @@ class TransformerForBiaffineParsing(nn.Module):
             out_trans = self.roberta(
             input_ids=input_ids,
             attention_mask=attention_mask,
-            token_type_ids=token_type_ids,
         )
         else:
             out_trans = self.bert(

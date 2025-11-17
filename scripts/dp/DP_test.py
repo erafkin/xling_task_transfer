@@ -58,6 +58,19 @@ def test_lang_dp(dp, language_model, pretrained_checkpoint, dataset, best_lambda
     lv = get_language_vector(pretrained_checkpoint, language_model)
     dp = apply_language_vector_to_model(dp, lv, best_lambda)
     dp.to(device).eval()
+    if "token_type_ids" in dataset:
+        dataset.set_format(type="torch", columns=["input_ids", 
+                                              "attention_mask", 
+                                              "token_type_ids", 
+                                              "word_starts", 
+                                              'labels_arcs', 
+                                              'labels_rels'])
+    else:
+        dataset.set_format(type="torch", columns=["input_ids", 
+                                              "attention_mask", 
+                                              "word_starts", 
+                                              'labels_arcs', 
+                                              'labels_rels'])
 
     collator = DataCollatorForDependencyParsing(tokenizer=tokenizer)
     test_dataloader = DataLoader(dataset, batch_size=batch_size, collate_fn=collator)

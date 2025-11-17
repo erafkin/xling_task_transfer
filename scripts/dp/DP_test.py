@@ -8,6 +8,7 @@ from safetensors.torch import load_model
 from scripts.task_vectors import TaskVector
 from scripts.task_utils import load_conllu_data
 from scripts.dp.dp_model import TransformerForBiaffineParsing, DataCollatorForDependencyParsing
+from scripts.dp.DP_train import UD_HEAD_LABELS
 import gc
 import json
 import numpy as np
@@ -22,9 +23,7 @@ def apply_language_vector_to_model(dp_model_checkpoint: str, language_vector:Tas
     return dp_model
 
 def get_label_mapping():
-    dp_dataset = load_conllu_data("GUM_en/en_gum-ud-train.conllu")
-    dp_dataset = Dataset.from_pandas(dp_dataset)
-    unique_tags = sorted({tag for ex in dp_dataset for tag in ex["dep_rel"]})
+    unique_tags = sorted(UD_HEAD_LABELS)
     label2id = {tag: i for i, tag in enumerate(unique_tags)}
     id2label = {i: tag for tag, i in label2id.items()}
     return id2label, label2id
@@ -190,6 +189,7 @@ if __name__ == "__main__":
             else:
                 encoder = mlm_model.roberta
             hyperparameter_results = {}
+            torch.set_grad_enabled(False)
             for l in test_lambdas:
                 dp_model = TransformerForBiaffineParsing(encoder, num_labels=len(id2label), bert=bert)
                 load_model(dp_model, f"{prefix}/{model_base}/DP_en/model.safetensors", device="cpu")

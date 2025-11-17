@@ -1,0 +1,20 @@
+
+======language: en=======
+best lambda: 0.0
+accuracy: {'uas': 74.14767096134787, 'las': 71.73439048562933}
+
+======language: es=======
+best lambda: 0.0
+accuracy: {'uas': 55.26835397594687, 'las': 48.523604379824086}
+
+======language: hi=======
+best lambda: 0.0
+accuracy: {'uas': 13.417144859608394, 'las': 7.613123658504533}
+
+======language: de=======
+best lambda: 0.0
+accuracy: {'uas': 38.7123745819398, 'las': 33.84320283297265}
+
+======language: zh=======
+best lambda: 0.0
+accuracy: {'uas': 12.167523879500369, 'las': 7.680626989958364}

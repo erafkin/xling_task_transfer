@@ -6,14 +6,53 @@ from datasets import Dataset, DatasetDict
 
 from scripts.dp.dp_model import TransformerForBiaffineParsing, DataCollatorForDependencyParsing
 from scripts.task_utils import load_conllu_data
-
+UD_HEAD_LABELS = [
+    "_",
+    "acl",
+    "advcl",
+    "advmod",
+    "amod",
+    "appos",
+    "aux",
+    "case",
+    "cc",
+    "ccomp",
+    "clf",
+    "compound",
+    "conj",
+    "cop",
+    "csubj",
+    "dep",
+    "det",
+    "discourse",
+    "dislocated",
+    "expl",
+    "fixed",
+    "flat",
+    "goeswith",
+    "iobj",
+    "list",
+    "mark",
+    "nmod",
+    "nsubj",
+    "nummod",
+    "obj",
+    "obl",
+    "orphan",
+    "parataxis",
+    "punct",
+    "reparandum",
+    "root",
+    "vocative",
+    "xcomp",
+]
 
 def train_DP_model(model_checkpoint, GUM_folder: str = "GUM_en"):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     train_dataset = load_conllu_data(f"{GUM_folder}/en_gum-ud-train.conllu")
     dev_dataset = load_conllu_data(f"{GUM_folder}/en_gum-ud-dev.conllu")
     dataset = DatasetDict({"train": Dataset.from_pandas(train_dataset), "dev": Dataset.from_pandas(dev_dataset)})
-    dep_rel_tags = sorted({tag for ex in dataset["train"] for tag in ex["dep_rel"]})
+    dep_rel_tags = sorted(UD_HEAD_LABELS)
     label2id = {tag: i for i, tag in enumerate(dep_rel_tags)}
     id2label = {i: tag for tag, i in label2id.items()}
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
@@ -104,6 +143,6 @@ def train_DP_model(model_checkpoint, GUM_folder: str = "GUM_en"):
 if __name__ == "__main__":
     roberta = "FacebookAI/xlm-roberta-base"
     bert = "google-bert/bert-base-multilingual-cased"
-    train_DP_model(bert)
+    train_DP_model(roberta)
 
 

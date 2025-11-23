@@ -1,7 +1,8 @@
-import argparse, math, sys
+import math
 from tqdm.auto import tqdm
 import torch
 from transformers import AutoTokenizer, AutoModelForMaskedLM, DataCollatorForLanguageModeling
+from datasets import load_dataset
 """
     Method for calculating perplexity and loss to make sure that the gradients didnt vanish/explode. 
     Scaffolded using ChatGPT.
@@ -84,13 +85,16 @@ if __name__ == "__main__":
     with open("output/languages/perplexity/summary_mbert.txt", "w") as file:
         for model in models:
             language = model.split("_")[1]
-            with open(f"perplexity_eval_data/{language}.txt", "r") as f:
-                sentences = f.read()
+            dataset = load_dataset("uonlp/CulturaX", language, streaming=True, split="train")#, cache_dir="/home/scratch/epr41")
+            dataset = dataset.take(100)
+            sentences = []
+            for d in dataset:
                 if language == "zh":
-                    sentences = sentences.split("。")
-                else:
-                    sentences = sentences.split(".")
-                f.close()
+                    sentences += d["text"].split("。")
+                elif language == "hi":
+                    sentences += d["text"].split("\n")
+                else: 
+                    sentences += d["text"].split(".")
             avg_loss, ppl, nan, inf, total_norm = eval_model(base_model, sentences=sentences)
             file.write(f"\n=== LANGUAGE {language} ===\n")
             file.write("\n=== Perplexity ===\n")

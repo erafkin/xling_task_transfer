@@ -9,8 +9,7 @@ import torch
 from datasets import load_dataset, Dataset
 from tqdm import tqdm
 import os
-def train_language_model(language: str, mlm_prob: float = 0.15, num_samples:int = 500000, batch_size:int = 32):
-    model_checkpoint = "google-bert/bert-base-multilingual-cased"
+def train_language_model(model_checkpoint: str, language: str, mlm_prob: float = 0.15, num_samples:int = 500000, batch_size:int = 32):
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
     def preprocess_function(examples):
         return tokenizer(examples["text"], padding="max_length", truncation=True, max_length=128)
@@ -73,8 +72,15 @@ def train_language_model(language: str, mlm_prob: float = 0.15, num_samples:int 
     trainer.save_model(f"bert-multilingual/language_{language}/final")
 
 if __name__ == "__main__":
-    languages = ["en", "hi", "es", "de", "zh"]
+    # languages = ["en", "hi", "es", "de", "zh"]
+    languages = ["ru", "fr"]
+    model_checkpoints = ["google-bert/bert-base-multilingual-cased", "FacebookAI/xlm-roberta-base"]
     for language in tqdm(languages):
-        if not os.path.exists(f"bert-multilingual/language_{language}/final"):
-            train_language_model(language=language, num_samples=1000000)
+        for i, checkpoint in enumerate(model_checkpoints):
+            if i == 0:
+                if not os.path.exists(f"bert-multilingual/language_{language}/final"):
+                    train_language_model(model_checkpoint=checkpoint, language=language, num_samples=1000000)
+            else:
+                if not os.path.exists(f"xlm-roberta/language_{language}/final"):
+                    train_language_model(model_checkpoint=checkpoint, language=language, num_samples=1000000)
 

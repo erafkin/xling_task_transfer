@@ -69,7 +69,7 @@ def train_language_model(model_checkpoint: str, language: str, mlm_prob: float =
             tokenizer=tokenizer,
         )
     trainer.train()
-    trainer.save_model(f"bert-multilingual/language_{language}/final")
+    trainer.save_model(f"bert-multilingual/language_{language}_done")
 
 if __name__ == "__main__":
     # languages = ["en", "hi", "es", "de", "zh"]
@@ -78,9 +78,9 @@ if __name__ == "__main__":
     for language in tqdm(languages):
         for i, checkpoint in enumerate(model_checkpoints):
             if i == 0:
-                if not os.path.exists(f"bert-multilingual/language_{language}/final"):
+                if not os.path.exists(f"bert-multilingual/language_{language}_done"):
                     train_language_model(model_checkpoint=checkpoint, language=language, num_samples=1000000)
             else:
-                if not os.path.exists(f"xlm-roberta/language_{language}/final"):
+                if not os.path.exists(f"xlm-roberta/language_{language}_done"):
                     train_language_model(model_checkpoint=checkpoint, language=language, num_samples=1000000)
 

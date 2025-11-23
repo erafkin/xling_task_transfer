@@ -1,5 +1,8 @@
 from torch import nn
 import pandas as pd
+import re
+from pathlib import Path
+from datasets import Dataset
 
 class TokenClassificationHead(nn.Module):
     def __init__(self, encoder: nn.Module, num_labels: int, dropout: float = 0.1, bert:bool=False):
@@ -95,3 +98,34 @@ def load_conllu_data(filepath) -> pd.DataFrame:
     rows = []
     df = pd.DataFrame(sentences, columns=["tokens", "pos_tags", "dep_rel", "dep_head"])
     return df
+
+def read_uner(file_path):
+    """
+        Read Universal NER file.
+
+        Code from the Unversal NER repository: https://github.com/UniversalNER/uner_code/blob/master/prepare_data.py#L7C1-L32C19
+    """
+    file_path = Path(file_path)
+    raw_text = file_path.read_text().strip()
+    raw_docs = re.split(r'\n\t?\n', raw_text)
+
+    token_docs = []
+    tag_docs = []
+    for doc in raw_docs:
+        tokens = []
+        tags = []
+        for line in doc.split('\n'):
+            # ignore comments
+            if line.startswith('#'): continue
+            tok_id, token, tag = line.split('\t')[:3]
+            tokens.append(token)
+            if "OTH" in tag or tag == "B-O":
+                tag = "O"
+            tags.append(tag)
+        token_docs.append(tokens)
+        tag_docs.append(tags)
+
+
+    train_dict = {"tokens": token_docs, "ner_tags": tag_docs}
+    dataset = Dataset.from_dict(train_dict)
+    return dataset

@@ -7,7 +7,7 @@ from transformers import AutoModelForMaskedLM, AutoTokenizer, DataCollatorForTok
 from tqdm import tqdm
 from safetensors.torch import load_model
 from scripts.task_vectors import TaskVector
-from scripts.task_utils import TokenClassificationHead
+from scripts.task_utils import TokenClassificationHead, read_uner
 import gc
 def get_language_vector(base_model: str, saved_language: str):
     lang_vector = TaskVector(pretrained_model=AutoModelForMaskedLM.from_pretrained(base_model),
@@ -72,13 +72,16 @@ if __name__ == "__main__":
     model_base = "base_finetuned"
     bert_values = [True, False]
     
-    datasets = ["English (EN)", "Spanish (ES)", "Hindi (HI)", "German (DE)", "Chinese (ZH)"]
+    datasets = ["English (EN)", "Spanish (ES)", "Hindi (HI)", "German (DE)", "Chinese (ZH)", "French (FR)"]
     id2label, label2id = get_label_mapping()
     language_models = ["language_en_done", 
-                    "language_es_done", 
-                    "language_hi_done", 
-                    "language_de_done", 
-                    "language_zh_done"]
+                        "language_es_done", 
+                        "language_hi_done", 
+                        "language_de_done", 
+                        "language_zh_done",
+                        "language_fr_done",
+                        "language_ru_done"
+                    ]
     overall_hyperparameter_results = {}
     for idx, model in enumerate(language_models):
         overall_hyperparameter_results[model] = {}
@@ -91,7 +94,18 @@ if __name__ == "__main__":
                 base_model = "FacebookAI/xlm-roberta-base"
                 prefix = "xlm-roberta"
             # handle data
-            NER_dataset = load_dataset("MultiCoNER/multiconer_v2", datasets[idx], trust_remote_code=True)
+            if model.split("_")[1] == "ru":
+                # russian NER tags come from a different datasource :(
+                # load from uner
+                NER_dataset = read_uner("ru_pud-ud-test.iob2")
+                
+                # split into train/val splits (train because we trained on test because multiconer was really weird )
+                NER_dataset = NER_dataset.train_test_split(test_size=0.1)
+                temp_test_ds = NER_dataset.pop("test")
+                NER_dataset["validation"] = temp_test_ds # move test to validation
+            else:
+
+                NER_dataset = load_dataset("MultiCoNER/multiconer_v2", datasets[idx], trust_remote_code=True)
             tokenizer = AutoTokenizer.from_pretrained(base_model)
             def tokenize_and_align_labels(examples):
                 # from https://reybahl.medium.com/token-classification-in-python-with-huggingface-3fab73a6a20e

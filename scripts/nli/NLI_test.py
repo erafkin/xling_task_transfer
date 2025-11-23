@@ -48,12 +48,15 @@ if __name__ == "__main__":
     model_base = "base_finetuned"
     bert_values = [True, False]
     
-    datasets = ["en", "es", "hi", "de", "zh"]
+    datasets = ["en", "es", "hi", "de", "zh", "fr","ru"]
     language_models = ["language_en_done", 
                     "language_es_done", 
                     "language_hi_done", 
                     "language_de_done", 
-                    "language_zh_done"]
+                    "language_zh_done", 
+                    "language_fr_done",
+                    "language_ru_done"
+                    ]
     overall_hyperparameter_results = {}
     torch.set_grad_enabled(False)  
     for idx, model in enumerate(language_models):

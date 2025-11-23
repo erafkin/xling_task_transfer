@@ -103,28 +103,32 @@ if __name__ == "__main__":
     test_lambdas = [0.0, 0.1, 0.2, 0.3, 0.4, 0.6, 0.7, 0.8, 0.9, 1.0]
     model_base = "base_finetuned"
     bert_values = [True, False]
-    
-    datasets = ["English (EN)", "Spanish (ES)", "Hindi (HI)", "German (DE)", "Chinese (ZH)"]
     id2label, label2id = get_label_mapping()
     val_datasets = [
         "GUM_en/en_gum-ud-dev.conllu", 
         "val_datasets_pos/es_gsd-ud-dev.conllu", 
         "val_datasets_pos/hi_hdtb-ud-dev.conllu",
         "val_datasets_pos/de_gsd-ud-dev.conllu",
-        "val_datasets_pos/zh_gsd-ud-dev.conllu"
+        "val_datasets_pos/zh_gsd-ud-dev.conllu",
+        "val_datasets_pos/fr_gsd-ud-dev.conllu",
+        "val_datasets_pos/ru_gsd-ud-dev.conllu"
     ]
     test_datasets = [
         "UD_English-PUD/en_pud-ud-test.conllu",
         "UD_Spanish-PUD/es_pud-ud-test.conllu",
         "UD_Hindi-PUD/hi_pud-ud-test.conllu",
         "UD_German-PUD/de_pud-ud-test.conllu", 
-        "UD_Chinese-PUD/zh_pud-ud-test.conllu"
+        "UD_Chinese-PUD/zh_pud-ud-test.conllu",
+        "UD_French-PUD/fr_pud-ud-test.conllu",
+        "UD_Russian-PUD/ru_pud-ud-test.conllu"
         ]
     language_models = ["language_en_done", 
                     "language_es_done", 
                     "language_hi_done", 
                     "language_de_done", 
-                    "language_zh_done"]
+                    "language_zh_done", 
+                    "language_fr_done",
+                    "language_ru_done"]
     overall_hyperparameter_results = {}
     for idx, model in enumerate(language_models):
         overall_hyperparameter_results[model] = {}

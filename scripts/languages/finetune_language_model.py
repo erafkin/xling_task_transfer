@@ -9,7 +9,7 @@ import torch
 from datasets import load_dataset, Dataset
 from tqdm import tqdm
 import os
-def train_language_model(model_checkpoint: str, language: str, mlm_prob: float = 0.15, num_samples:int = 500000, batch_size:int = 32):
+def train_language_model(model_checkpoint: str, language: str, output_dir: str, mlm_prob: float = 0.15, num_samples:int = 500000, batch_size:int = 32):
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
     def preprocess_function(examples):
         return tokenizer(examples["text"], padding="max_length", truncation=True, max_length=128)
@@ -33,7 +33,7 @@ def train_language_model(model_checkpoint: str, language: str, mlm_prob: float =
             )
         max_steps = -1
     training_args = TrainingArguments(
-            output_dir=f"bert-multilingual/language_{language}",
+            output_dir=f"{output_dir}/language_{language}",
             eval_strategy="no",
             save_strategy="steps",
             save_steps=100000,
@@ -69,7 +69,7 @@ def train_language_model(model_checkpoint: str, language: str, mlm_prob: float =
             tokenizer=tokenizer,
         )
     trainer.train()
-    trainer.save_model(f"bert-multilingual/language_{language}_done")
+    trainer.save_model(f"{output_dir}/language_{language}_done")
 
 if __name__ == "__main__":
     # languages = ["en", "hi", "es", "de", "zh"]
@@ -79,8 +79,10 @@ if __name__ == "__main__":
         for i, checkpoint in enumerate(model_checkpoints):
             if i == 0:
                 if not os.path.exists(f"bert-multilingual/language_{language}_done"):
-                    train_language_model(model_checkpoint=checkpoint, language=language, num_samples=1000000)
+                    output_dir = "bert-multilingual"
+                    train_language_model(model_checkpoint=checkpoint, language=language, output_dir=output_dir,num_samples=1000000)
             else:
                 if not os.path.exists(f"xlm-roberta/language_{language}_done"):
-                    train_language_model(model_checkpoint=checkpoint, language=language, num_samples=1000000)
+                    output_dir = "xlm-roberta"
+                    train_language_model(model_checkpoint=checkpoint, language=language, output_dir= output_dir, num_samples=1000000)
 

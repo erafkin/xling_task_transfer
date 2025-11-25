@@ -79,7 +79,7 @@ def eval_model(model_dir, sentences, batch_size: int = 32, max_len: int = 512):
     return avg_loss, ppl, nan, inf, total_norm
 
 if __name__ == "__main__":
-    models = ["language_en", "language_es", "language_hi", "language_de", "language_zh"]
+    models = ["language_en", "language_es", "language_hi", "language_de", "language_zh", "language_fr", "language_ru"]
 
     base_model = "google-bert/bert-base-multilingual-cased"
     with open("output/languages/perplexity/summary_mbert.txt", "w") as file:

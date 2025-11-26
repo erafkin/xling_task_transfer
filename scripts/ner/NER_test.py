@@ -46,7 +46,16 @@ def map_multiconer_labels_to_uner_labels(lab: str) -> str:
 
 def compute_metrics(predictions, labels, uner:bool = False):
     if uner:
-        preds = [map_multiconer_labels_to_uner_labels(p) for p in predictions]
+        id2label, label2id = get_label_mapping()
+        prediction_to_label = [id2label[p] for p in predictions]
+        preds = [map_multiconer_labels_to_uner_labels(p) for p in prediction_to_label]
+        uner_label2id = {
+                    "LOC": 0,
+                    "ORG": 1, 
+                    "PER": 2, 
+                    "OTHER": 3
+                }
+        preds = [uner_label2id[p] for p in preds]
     else:
         preds = predictions
     # Remove ignored labels (-100)
@@ -103,7 +112,7 @@ if __name__ == "__main__":
     bert_values = [True, False]
     
     datasets = ["English (EN)", "Spanish (ES)", "Hindi (HI)", "German (DE)", "Chinese (ZH)", "French (FR)"]
-    id2label, label2id = get_label_mapping()
+    id2label, label2id_orig = get_label_mapping()
     language_models = ["language_en_done", 
                         "language_es_done", 
                         "language_hi_done", 
@@ -133,9 +142,16 @@ if __name__ == "__main__":
                 NER_dataset = NER_dataset.train_test_split(test_size=0.1)
                 temp_test_ds = NER_dataset.pop("test")
                 NER_dataset["validation"] = temp_test_ds # move test to validation
+                label2id = {
+                    "LOC": 0,
+                    "ORG": 1, 
+                    "PER": 2, 
+                    "OTHER": 3
+                }
             else:
 
                 NER_dataset = load_dataset("MultiCoNER/multiconer_v2", datasets[idx], trust_remote_code=True)
+                label2id=label2id_orig
             tokenizer = AutoTokenizer.from_pretrained(base_model)
             def tokenize_and_align_labels(examples):
                 # from https://reybahl.medium.com/token-classification-in-python-with-huggingface-3fab73a6a20e
@@ -149,7 +165,8 @@ if __name__ == "__main__":
                         if word_idx is None:
                             label_ids.append(-100)
                         elif word_idx != previous_word_idx:  # Only label the first token of a given word.
-                            label_ids.append(label2id[label[word_idx]])
+                            # FIX HERE! TODO EMMA
+                            label_ids.append(label2id[map_multiconer_labels_to_uner_labels(label[word_idx], uner=model.split("_")[1] == "ru")])
                         else:
                             label_ids.append(-100)
                         previous_word_idx = word_idx

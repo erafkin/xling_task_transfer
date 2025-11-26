@@ -47,15 +47,15 @@ def map_multiconer_labels_to_uner_labels(lab: str) -> str:
 def compute_metrics(predictions, labels, uner:bool = False):
     if uner:
         id2label, label2id = get_label_mapping()
-        prediction_to_label = [id2label[p] for p in predictions]
-        preds = [map_multiconer_labels_to_uner_labels(p) for p in prediction_to_label]
+        prediction_to_label = [[id2label[p1] for p1 in p] for p in predictions]
+        preds = [[map_multiconer_labels_to_uner_labels(p1) for p1 in p] for p in prediction_to_label]
         uner_label2id = {
                     "LOC": 0,
                     "ORG": 1, 
                     "PER": 2, 
                     "OTHER": 3
                 }
-        preds = [uner_label2id[p] for p in preds]
+        preds = [[uner_label2id[p1] for p1 in p]for p in preds]
     else:
         preds = predictions
     # Remove ignored labels (-100)
@@ -166,7 +166,7 @@ if __name__ == "__main__":
                             label_ids.append(-100)
                         elif word_idx != previous_word_idx:  # Only label the first token of a given word.
                             # FIX HERE! TODO EMMA
-                            if model.split("_")[1] == "ru"):
+                            if model.split("_")[1] == "ru":
                                 label_ids.append(label2id[map_multiconer_labels_to_uner_labels(label[word_idx])])
                             else:
                                 label_ids.append(label2id[label[word_idx]])

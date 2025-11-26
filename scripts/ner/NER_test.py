@@ -166,7 +166,10 @@ if __name__ == "__main__":
                             label_ids.append(-100)
                         elif word_idx != previous_word_idx:  # Only label the first token of a given word.
                             # FIX HERE! TODO EMMA
-                            label_ids.append(label2id[map_multiconer_labels_to_uner_labels(label[word_idx], uner=model.split("_")[1] == "ru")])
+                            if model.split("_")[1] == "ru"):
+                                label_ids.append(label2id[map_multiconer_labels_to_uner_labels(label[word_idx])])
+                            else:
+                                label_ids.append(label2id[label[word_idx]])
                         else:
                             label_ids.append(-100)
                         previous_word_idx = word_idx

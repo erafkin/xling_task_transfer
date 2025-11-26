@@ -18,16 +18,46 @@ def apply_language_vector_to_model(ner_model_checkpoint: str, language_vector:Ta
     ner_model = language_vector.apply_to(ner_model_checkpoint, scaling_coef=lambda_coef)
     return ner_model
 
-def compute_metrics(predictions, labels):
+def map_multiconer_labels_to_uner_labels(lab: str) -> str:
+    label_map = {
+        "Facility": "LOC", 
+        "OtherLOC": "LOC",
+        "HumanSettlement": "LOC",
+        "Station": "LOC",
+        "MusicalGRP": "ORG", 
+        "PublicCORP": "ORG",
+        "PrivateCORP": "ORG", 
+        "AerospaceManufacturer": "ORG",
+        "SportsGRP": "ORG",
+        "CarManufacturer": "ORG",
+        "ORG": "ORG",
+        "Scientist": "PER",
+        "Artist": "PER",
+        "Athlete": "PER",
+        "Politician": "PER",
+        "Cleric": "PER",
+        "SportsManager": "PER",
+        "OtherPER": "PER"
+    }
+    if lab in label_map:
+        return label_map[lab]
+    else:
+        return "OTHER"
 
+def compute_metrics(predictions, labels, uner:bool = False):
+    if uner:
+        preds = [map_multiconer_labels_to_uner_labels(p) for p in predictions]
+    else:
+        preds = predictions
     # Remove ignored labels (-100)
     y_pred = [
         [p for (p, l) in zip(prediction, label) if l != -100]
-        for prediction, label in zip(predictions, labels)
+        for prediction, label in zip(preds, labels)
     ]
+    
     y_true = [
         [l for (p, l) in zip(prediction, label) if l != -100]
-        for prediction, label in zip(predictions, labels)
+        for prediction, label in zip(preds, labels)
     ]
     # Simple accuracy calculation
     total = sum(len(pred) for pred in y_pred)
@@ -43,7 +73,7 @@ def get_label_mapping():
     return id2label, label2id
     
 
-def test_lang_ner(ner, language_model, pretrained_checkpoint, dataset, best_lambda:Optional[float]=1.0, batch_size:int=32):
+def test_lang_ner(ner, language_model, pretrained_checkpoint, dataset, best_lambda:Optional[float]=1.0, batch_size:int=32, uner:bool=False):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     lv = get_language_vector(pretrained_checkpoint, language_model)
     ner = apply_language_vector_to_model(ner, lv, best_lambda) 
@@ -61,7 +91,7 @@ def test_lang_ner(ner, language_model, pretrained_checkpoint, dataset, best_lamb
             predictions = torch.argmax(logits, dim=-1).cpu().numpy()
             preds.extend(predictions)
             labels.extend(batch["labels"].cpu().numpy())
-    accuracy = compute_metrics(preds, labels)
+    accuracy = compute_metrics(preds, labels, uner)
     ner.to("cpu")
     del ner
     gc.collect()
@@ -144,7 +174,7 @@ if __name__ == "__main__":
             for l in test_lambdas:
                 ner_model = TokenClassificationHead(encoder, num_labels=len(id2label), bert=bert)
                 load_model(ner_model, f"{prefix}/{model_base}/NER_en/model.safetensors", device="cpu")
-                accuracy = test_lang_ner(ner_model, f"{prefix}/{model}", base_model, tokenized_dataset["validation"], l)
+                accuracy = test_lang_ner(ner_model, f"{prefix}/{model}", base_model, tokenized_dataset["validation"], l, uner=model.split("_")[1] == "ru")
                 hyperparameter_results[l] = accuracy
             print("hyperparamter serach results")
             print(hyperparameter_results)
@@ -156,7 +186,7 @@ if __name__ == "__main__":
                 print("language model", model)
                 ner_model = TokenClassificationHead(encoder, num_labels=len(id2label), bert=bert)
                 load_model(ner_model, f"{prefix}/{model_base}/NER_en/model.safetensors", device="cpu") 
-                accuracy= test_lang_ner(ner_model, f"{prefix}/{model}", base_model, tokenized_dataset["train"], best_lambda)
+                accuracy= test_lang_ner(ner_model, f"{prefix}/{model}", base_model, tokenized_dataset["train"], best_lambda, uner=model.split("_")[1] == "ru")
                 print(f"accuracy: {accuracy}")  
                 f.write(f"\n======language: {model.split('_')[1]}=======\n")
                 f.write(f"best lambda: {best_lambda}\n")

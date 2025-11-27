@@ -48,7 +48,7 @@ def compute_metrics(predictions, labels, uner:bool = False):
     if uner:
         id2label, label2id = get_label_mapping()
         prediction_to_label = [[id2label[p1] for p1 in p] for p in predictions]
-        preds = [[map_multiconer_labels_to_uner_labels(p1.split("-")[1]) for p1 in p] for p in prediction_to_label]
+        preds = [[map_multiconer_labels_to_uner_labels(p1.split("-")[-1]) for p1 in p] for p in prediction_to_label]
         uner_label2id = {
                     "LOC": 0,
                     "ORG": 1, 
@@ -194,7 +194,7 @@ if __name__ == "__main__":
             for l in test_lambdas:
                 ner_model = TokenClassificationHead(encoder, num_labels=len(id2label), bert=bert)
                 load_model(ner_model, f"{prefix}/{model_base}/NER_en/model.safetensors", device="cpu")
-                accuracy = test_lang_ner(ner_model, f"{prefix}/{model}", base_model, tokenized_dataset["validation"], l, uner=model.split("_")[-1] == "ru")
+                accuracy = test_lang_ner(ner_model, f"{prefix}/{model}", base_model, tokenized_dataset["validation"], l, uner=model.split("_")[1] == "ru")
                 hyperparameter_results[l] = accuracy
             print("hyperparamter serach results")
             print(hyperparameter_results)

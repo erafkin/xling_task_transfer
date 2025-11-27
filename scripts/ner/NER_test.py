@@ -167,7 +167,7 @@ if __name__ == "__main__":
                         elif word_idx != previous_word_idx:  # Only label the first token of a given word.
                             # FIX HERE! TODO EMMA
                             if model.split("_")[1] == "ru":
-                                label_ids.append(label2id[map_multiconer_labels_to_uner_labels(label[word_idx].split("-")[1])])
+                                label_ids.append(label2id[map_multiconer_labels_to_uner_labels(label[word_idx].split("-")[-1])])
                             else:
                                 label_ids.append(label2id[label[word_idx]])
                         else:
@@ -194,7 +194,7 @@ if __name__ == "__main__":
             for l in test_lambdas:
                 ner_model = TokenClassificationHead(encoder, num_labels=len(id2label), bert=bert)
                 load_model(ner_model, f"{prefix}/{model_base}/NER_en/model.safetensors", device="cpu")
-                accuracy = test_lang_ner(ner_model, f"{prefix}/{model}", base_model, tokenized_dataset["validation"], l, uner=model.split("_")[1] == "ru")
+                accuracy = test_lang_ner(ner_model, f"{prefix}/{model}", base_model, tokenized_dataset["validation"], l, uner=model.split("_")[-1] == "ru")
                 hyperparameter_results[l] = accuracy
             print("hyperparamter serach results")
             print(hyperparameter_results)

@@ -18,3 +18,11 @@ accuracy: 0.896433146787135
 ======language: zh=======
 best lambda: 0.2
 accuracy: 0.6736846819703102
+
+======language: fr=======
+best lambda: 1.0
+accuracy: 0.9002191787457163
+
+======language: ru=======
+best lambda: 0.9
+accuracy: 0.9151967825337547

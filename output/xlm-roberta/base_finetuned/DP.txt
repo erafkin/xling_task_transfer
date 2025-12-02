@@ -18,3 +18,11 @@ accuracy: {'uas': 42.53822918633189, 'las': 38.196148763451006}
 ======language: zh=======
 best lambda: 0.0
 accuracy: {'uas': 6.5462861498880365, 'las': 4.573824384201249}
+
+======language: fr=======
+best lambda: 0.0
+accuracy: {'uas': 46.15699435213227, 'las': 41.00024555946632}
+
+======language: ru=======
+best lambda: 0.0
+accuracy: {'uas': 33.744270586375855, 'las': 29.424161003108374}

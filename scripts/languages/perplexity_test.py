@@ -81,8 +81,8 @@ def eval_model(model_dir, sentences, batch_size: int = 32, max_len: int = 512):
 if __name__ == "__main__":
     models = ["language_en", "language_es", "language_hi", "language_de", "language_zh", "language_fr", "language_ru"]
 
-    base_model = "google-bert/bert-base-multilingual-cased"
-    with open("output/languages/perplexity/summary_mbert.txt", "w") as file:
+    base_model = "FacebookAI/xlm-roberta-base"
+    with open("output/languages/perplexity/summary_xlmr.txt", "w") as file:
         for model in models:
             language = model.split("_")[1]
             dataset = load_dataset("uonlp/CulturaX", language, streaming=True, split="train")#, cache_dir="/home/scratch/epr41")
@@ -110,7 +110,7 @@ if __name__ == "__main__":
             else:
                 file.write("No Infs\n")
             file.write(f"🔎 Total L2 norm of parameters: {total_norm:.2f}\n")
-            avg_loss, ppl, nan, inf, total_norm = eval_model(f"bert-multilingual/{model}_done", sentences=sentences)
+            avg_loss, ppl, nan, inf, total_norm = eval_model(f"xlm-roberta/{model}_done", sentences=sentences)
             file.write("\n=== Perplexity result ===\n")
             file.write(f"Model: {model}\n")
             file.write(f"Average token‑wise loss : {avg_loss:.4f}\n")

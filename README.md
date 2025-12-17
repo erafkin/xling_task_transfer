@@ -23,9 +23,11 @@ Results are in the output folder. There is the perplexity of the language models
 ## Datasets: 
 | Task | Dataset | 
 |----------|----------|
-| Language Finetuning| [Wikipedia Dump](https://huggingface.co/datasets/wikimedia/wikipedia)
-| NER | [MultiCoNER V2](https://huggingface.co/datasets/MultiCoNER/multiconer_v2) | Data 3A  |
-| NLI  | [XNLI](https://huggingface.co/datasets/facebook/xnli)  | Data 3B  |
+| Language Finetuning | [Wikipedia Dump](https://huggingface.co/datasets/wikimedia/wikipedia)|
+| Language Finetuning | [CulturaX](https://huggingface.co/datasets/uonlp/CulturaX)|
+| NER | [MultiCoNER V2](https://huggingface.co/datasets/MultiCoNER/multiconer_v2) | 
+| NER | [UniversalNER](https://www.universalner.org/) | 
+| NLI | [XNLI](https://huggingface.co/datasets/facebook/xnli)  | 
 |POS tagging| [Universal Dependencies](https://universaldependencies.org/)
 |Dependency Parsing| [Universal Dependencies](https://universaldependencies.org/)
 

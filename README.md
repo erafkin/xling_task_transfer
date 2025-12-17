@@ -3,7 +3,9 @@ This code explores the success of cross lingual task transfer using [Task Vector
 
 Multilingual transformers were trained on each target language and then the base transformer was trained to perform a task (NER, POS tagging, NLI, or Dependency Parsing). Success was evaluated across tasks and crosslinguistically. It was hypothesized that task vectors would perform better for semantic tasks than syntactic tasks, and would perform better on languages more similar to the source language. 
 
-The base transformers tested were [`xlm-roberta-base`](https://huggingface.co/FacebookAI/xlm-roberta-base) and [`bert-base-multilingual-uncased`](https://huggingface.co/google-bert/bert-base-multilingual-uncased). These were either finetuned or trained from scratch (TBD) on [Wikipedia data](https://huggingface.co/datasets/wikimedia/wikipedia). Source language was always English, target languages were Spanish, German, Hindi, Chinese, Russian, and French.
+The base transformers tested were [`xlm-roberta-base`](https://huggingface.co/FacebookAI/xlm-roberta-base) and [`bert-base-multilingual-uncased`](https://huggingface.co/google-bert/bert-base-multilingual-uncased). These were finetuned on [Wikipedia data](https://huggingface.co/datasets/wikimedia/wikipedia). Source language was always English, target languages were Spanish, German, Hindi, Chinese, Russian, and French.
+
+Through this experiment I found that XLT is more successful across semantic tasks vs syntactic tasks. Additionally, I found that there is a correlation between source and target language distance and XLT accuracy loss--the transfer degrades as the languages become more distant. Finally, I find that the cosine similarity between the target language vectors and the source language vector (English) is correlated to theoretically-based metrics of language distance. 
 
 ## Setup
 Developed in Python 3.11

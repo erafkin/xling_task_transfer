@@ -101,7 +101,9 @@ if __name__ == "__main__":
     mlm = False
     mlm_model_checkpoints = ["google-bert/bert-base-multilingual-cased", "FacebookAI/xlm-roberta-base"]
     model_checkpoints = ["Qwen/Qwen3-0.6B"] # might need to lower batch size for qwen. 
+    batch_size = 8
     if mlm:
+        batch_size=32
         model_checkpoints = mlm_model_checkpoints
     for i, checkpoint in enumerate(model_checkpoints):
         if "bert-base" in checkpoint:
@@ -114,5 +116,5 @@ if __name__ == "__main__":
             raise Exception(f"{checkpoint} not allowed")
         for language in tqdm(languages):
             if not os.path.exists(f"{output_dir}/language_{language}_done"):
-                train_language_model(model_checkpoint=checkpoint, language=language, mlm=mlm, output_dir=output_dir,num_samples=1000000)
+                train_language_model(model_checkpoint=checkpoint, language=language, mlm=mlm, output_dir=output_dir,num_samples=1000000, batch_size=batch_size)
            

@@ -1,4 +1,5 @@
 import math
+import os
 from tqdm.auto import tqdm
 import torch
 from transformers import AutoTokenizer, AutoModelForMaskedLM, DataCollatorForLanguageModeling
@@ -85,7 +86,7 @@ if __name__ == "__main__":
     with open("output/languages/perplexity/summary_xlmr.txt", "w") as file:
         for model in models:
             language = model.split("_")[1]
-            dataset = load_dataset("uonlp/CulturaX", language, streaming=True, split="train", token="<TOKEN_HERE>")#, cache_dir="/home/scratch/epr41")
+            dataset = load_dataset("uonlp/CulturaX", language, streaming=True, split="train", token=os.getenv("HF_DATASET_TOKEN"))#, cache_dir="/home/scratch/epr41")
             dataset = dataset.take(100)
             sentences = []
             for d in dataset:

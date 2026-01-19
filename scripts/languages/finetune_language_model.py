@@ -55,7 +55,7 @@ def train_language_model(model_checkpoint: str,
     else:
         model = AutoModelForCausalLM.from_pretrained(
             model_checkpoint,
-            dtype=torch.float16,
+            dtype=torch.float32,
             device_map="auto"
         )
         if tokenizer.pad_token is None:

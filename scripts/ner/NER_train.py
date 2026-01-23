@@ -132,8 +132,6 @@ def train_NER_model_causal(model_checkpoint):
         then run trainer on that data? but its input-output ? seq2seq trainer i dont think so maybe trainer with labels...
     """
 
-    tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
-    model = AutoModelForCausalLM.from_pretrained(model_checkpoint)
     NER_dataset = load_dataset("MultiCoNER/multiconer_v2", "English (EN)", trust_remote_code=True)
     train_data = []
     for datum in NER_dataset["test"]:
@@ -170,7 +168,7 @@ def train_NER_model_causal(model_checkpoint):
             fp16=False
     )
     trainer = SFTTrainer(
-        model=model,
+        model=model_checkpoint,
         args=training_args,
         train_dataset=train_dataset,
         dataset_text_field="text",

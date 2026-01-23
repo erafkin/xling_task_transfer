@@ -188,4 +188,4 @@ if __name__ == "__main__":
     roberta = "FacebookAI/xlm-roberta-base"
     bert = "google-bert/bert-base-multilingual-cased"
     qwen = "Qwen/Qwen3-0.6B"
-    train_NER_model(qwen)
+    train_NER_model_causal(qwen)

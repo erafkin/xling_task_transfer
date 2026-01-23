@@ -4,10 +4,13 @@ from transformers import (
     DataCollatorForTokenClassification,
     TrainingArguments, 
     AutoConfig,
-    Trainer
+    Trainer,
+    AutoModelForCausalLM,
 )
+from trl import SFTTrainer, SFTConfig
+
 import torch
-from datasets import load_dataset
+from datasets import load_dataset, Dataset
 import numpy as np
 from torch import nn
 
@@ -98,7 +101,6 @@ def train_NER_model(model_checkpoint):
 
     set_trainable(model, train_encoder=True) 
     output_prefix = "bert-multilingual/base_finetuned" if is_bert else  "xlm-roberta/base_finetuned" 
-
     training_args = TrainingArguments(
             output_dir=f"{output_prefix}/NER_en",
             eval_strategy="epoch",
@@ -124,7 +126,66 @@ def train_NER_model(model_checkpoint):
     trainer.train()
     trainer.save_model(f"{output_prefix}/NER_en")
 
+def train_NER_model_causal(model_checkpoint):
+    """
+        parse dataset to be text-to-text
+        then run trainer on that data? but its input-output ? seq2seq trainer i dont think so maybe trainer with labels...
+    """
+
+    tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
+    model = AutoModelForCausalLM.from_pretrained(model_checkpoint)
+    NER_dataset = load_dataset("MultiCoNER/multiconer_v2", "English (EN)", trust_remote_code=True)
+    train_data = []
+    for datum in NER_dataset["test"]:
+        train_data.append(
+            {
+                "text": (
+                    f"Tag each token with its NER Tag.\n Sentence: {' '.join(datum['tokens'])}.\n Tags:\n {' '.join(datum['ner_tags'])}"
+                )
+            }
+        )
+    validation_data = []
+    for datum in NER_dataset["validation"]:
+        validation_data.append(
+            {
+                "text": (
+                    f"Tag each token with its NER Tag.\n Sentence: {' '.join(datum['tokens'])}.\n Tags:\n {' '.join(datum['ner_tags'])}"
+                )
+            }
+        )
+    train_dataset = Dataset.from_list(train_data)
+    validation_dataset = Dataset.from_list(validation_data)
+    output_prefix = "qwen/base_finetuned"
+
+    training_args = SFTConfig(
+            output_dir=f"{output_prefix}/NER_en",
+            eval_strategy="epoch",
+            learning_rate=2e-5,
+            num_train_epochs=3, 
+            weight_decay=0.01,
+            per_device_train_batch_size=8,
+            per_device_eval_batch_size=8,
+            push_to_hub=False,
+            save_strategy="no",
+            fp16=False
+    )
+    trainer = SFTTrainer(
+        model=model,
+        tokenizer=tokenizer,
+        args=training_args,
+        train_dataset=train_dataset,
+        validation_data=validation_dataset,
+        dataset_text_field="text",
+        max_seq_length=512
+    )    
+    
+    trainer.train()
+    trainer.save_model(f"{output_prefix}/NER_en")
+
+
+
 if __name__ == "__main__":
     roberta = "FacebookAI/xlm-roberta-base"
     bert = "google-bert/bert-base-multilingual-cased"
-    train_NER_model(bert)
+    qwen = "Qwen/Qwen3-0.6B"
+    train_NER_model(qwen)

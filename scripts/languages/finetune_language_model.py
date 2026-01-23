@@ -100,10 +100,10 @@ if __name__ == "__main__":
     languages = ["en", "hi", "es", "de", "zh", "ru", "fr"]
     mlm = False
     mlm_model_checkpoints = ["google-bert/bert-base-multilingual-cased", "FacebookAI/xlm-roberta-base"]
-    model_checkpoints = ["Qwen/Qwen3-0.6B"] # might need to lower batch size for qwen. 
-    batch_size = 8
+    model_checkpoints = ["Qwen/Qwen3-0.6B"]  
+    batch_size = 8 # need to lower batch size for qwen.
     if mlm:
-        batch_size=32
+        batch_size = 32
         model_checkpoints = mlm_model_checkpoints
     for i, checkpoint in enumerate(model_checkpoints):
         if "bert-base" in checkpoint:

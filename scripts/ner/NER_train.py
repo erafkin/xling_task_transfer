@@ -165,14 +165,13 @@ def train_NER_model_causal(model_checkpoint):
             per_device_eval_batch_size=8,
             push_to_hub=False,
             save_strategy="no",
-            fp16=False
+            fp16=False,
+            max_length=512
     )
     trainer = SFTTrainer(
         model=model_checkpoint,
         args=training_args,
-        train_dataset=train_dataset,
-        dataset_text_field="text",
-        max_seq_length=512
+        train_dataset=train_dataset
     )    
     
     trainer.train()

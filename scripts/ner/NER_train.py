@@ -144,17 +144,17 @@ def train_NER_model_causal(model_checkpoint):
                 )
             }
         )
-    validation_data = []
-    for datum in NER_dataset["validation"]:
-        validation_data.append(
-            {
-                "text": (
-                    f"Tag each token with its NER Tag.\n Sentence: {' '.join(datum['tokens'])}.\n Tags:\n {' '.join(datum['ner_tags'])}"
-                )
-            }
-        )
+    # validation_data = []
+    # for datum in NER_dataset["validation"]:
+    #     validation_data.append(
+    #         {
+    #             "text": (
+    #                 f"Tag each token with its NER Tag.\n Sentence: {' '.join(datum['tokens'])}.\n Tags:\n {' '.join(datum['ner_tags'])}"
+    #             )
+    #         }
+    #     )
     train_dataset = Dataset.from_list(train_data)
-    validation_dataset = Dataset.from_list(validation_data)
+    # validation_dataset = Dataset.from_list(validation_data)
     output_prefix = "qwen/base_finetuned"
 
     training_args = SFTConfig(
@@ -171,10 +171,8 @@ def train_NER_model_causal(model_checkpoint):
     )
     trainer = SFTTrainer(
         model=model,
-        tokenizer=tokenizer,
         args=training_args,
         train_dataset=train_dataset,
-        validation_data=validation_dataset,
         dataset_text_field="text",
         max_seq_length=512
     )    

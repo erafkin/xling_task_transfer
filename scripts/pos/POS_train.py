@@ -164,7 +164,7 @@ def train_POS_model_causal(model_checkpoint, GUM_folder: str = "GUM_en"):
             }
         )
     validation_data = []
-    for datum in dataset["validation"]:
+    for datum in dataset["dev"]:
         validation_data.append(
             {
                 "text": (

@@ -188,7 +188,7 @@ def train_NER_model_causal(model_checkpoint):
     trainer = SFTTrainer(
         model=model_checkpoint,
         args=training_args,
-        tokenizer=tokenizer,
+        processing_class=tokenizer,
         train_dataset=train_dataset,
         eval_dataset=validation_dataset,
         compute_metrics=compute_metrics

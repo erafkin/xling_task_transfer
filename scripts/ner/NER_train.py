@@ -7,6 +7,8 @@ from transformers import (
     Trainer,
     AutoModelForCausalLM,
 )
+from seqeval.metrics import f1_score
+import re
 from trl import SFTTrainer, SFTConfig
 
 import torch
@@ -131,14 +133,26 @@ def train_NER_model_causal(model_checkpoint):
         parse dataset to be text-to-text
         then run trainer on that data? but its input-output ? seq2seq trainer i dont think so maybe trainer with labels...
     """
+    def extract_tags(text):
+        # expects "... NER:\n TAG1 TAG2 ..."
+        m = re.search(r"NER:\s*(.*)", text, re.S)
+        return m.group(1).strip().split() if m else []
+    def compute_metrics(eval_preds):
+        preds, labels = eval_preds
+        preds_text = tokenizer.batch_decode(preds, skip_special_tokens=True)
+        labels_text = tokenizer.batch_decode(labels, skip_special_tokens=True)
 
+        y_pred = [extract_tags(p) for p in preds_text]
+        y_true = [extract_tags(l) for l in labels_text]
+
+        return {"f1": f1_score(y_true, y_pred)}
     NER_dataset = load_dataset("MultiCoNER/multiconer_v2", "English (EN)", trust_remote_code=True)
     train_data = []
     for datum in NER_dataset["test"]:
         train_data.append(
             {
                 "text": (
-                    f"Tag each token with its NER Tag.\n Sentence: {' '.join(datum['tokens'])}.\n Tags:\n {' '.join(datum['ner_tags'])}"
+                    f"Sentence: {' '.join(datum['tokens'])}.\n NER:\n {' '.join(datum['ner_tags'])}"
                 )
             }
         )
@@ -147,7 +161,7 @@ def train_NER_model_causal(model_checkpoint):
         validation_data.append(
             {
                 "text": (
-                    f"Tag each token with its NER Tag.\n Sentence: {' '.join(datum['tokens'])}.\n Tags:\n {' '.join(datum['ner_tags'])}"
+                    f"Sentence: {' '.join(datum['tokens'])}.\n NER:\n {' '.join(datum['ner_tags'])}"
                 )
             }
         )
@@ -172,7 +186,8 @@ def train_NER_model_causal(model_checkpoint):
         model=model_checkpoint,
         args=training_args,
         train_dataset=train_dataset,
-        eval_dataset=validation_dataset
+        eval_dataset=validation_dataset,
+        compute_metrics=compute_metrics
     )    
     
     trainer.train()

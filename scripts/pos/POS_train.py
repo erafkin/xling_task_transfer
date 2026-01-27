@@ -155,7 +155,7 @@ def train_POS_model_causal(model_checkpoint, GUM_folder: str = "GUM_en"):
     dev_dataset = load_conllu_data(f"{GUM_folder}/en_gum-ud-dev.conllu")
     dataset = DatasetDict({"train": Dataset.from_pandas(train_dataset), "dev": Dataset.from_pandas(dev_dataset)})
     train_data = []
-    for datum in dataset["test"]:
+    for datum in dataset["train"]:
         train_data.append(
             {
                 "text": (

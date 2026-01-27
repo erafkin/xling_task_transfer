@@ -133,6 +133,9 @@ def train_NER_model_causal(model_checkpoint):
         parse dataset to be text-to-text
         then run trainer on that data? but its input-output ? seq2seq trainer i dont think so maybe trainer with labels...
     """
+    tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, trust_remote_code=True)
+    tokenizer.pad_token = tokenizer.eos_token
+
     def extract_tags(text):
         # expects "... NER:\n TAG1 TAG2 ..."
         m = re.search(r"NER:\s*(.*)", text, re.S)
@@ -185,6 +188,7 @@ def train_NER_model_causal(model_checkpoint):
     trainer = SFTTrainer(
         model=model_checkpoint,
         args=training_args,
+        tokenizer=tokenizer,
         train_dataset=train_dataset,
         eval_dataset=validation_dataset,
         compute_metrics=compute_metrics

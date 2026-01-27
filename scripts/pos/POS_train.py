@@ -7,9 +7,14 @@ from transformers import (
     Trainer
 )
 import torch
-from datasets import load_dataset, DatasetDict, Dataset
+from datasets import DatasetDict, Dataset
 import numpy as np
 from torch import nn
+
+from seqeval.metrics import f1_score
+import re
+from trl import SFTTrainer, SFTConfig
+
 
 from scripts.task_utils import load_conllu_data, TokenClassificationHead
 
@@ -125,7 +130,79 @@ def train_POS_model(model_checkpoint, GUM_folder: str = "GUM_en"):
     trainer.train()
     trainer.save_model(f"{output_prefix}/POS_en")
 
+def train_POS_model_causal(model_checkpoint, GUM_folder: str = "GUM_en"):
+    """
+        parse dataset to be text-to-text
+    """
+    tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, trust_remote_code=True)
+    tokenizer.pad_token = tokenizer.eos_token
+
+    def extract_tags(text):
+        # expects "... POS:\n TAG1 TAG2 ..."
+        m = re.search(r"POS:\s*(.*)", text, re.S)
+        return m.group(1).strip().split() if m else []
+    
+    def compute_metrics(eval_preds):
+        preds, labels = eval_preds
+        preds_text = tokenizer.batch_decode(preds, skip_special_tokens=True)
+        labels_text = tokenizer.batch_decode(labels, skip_special_tokens=True)
+
+        y_pred = [extract_tags(p) for p in preds_text]
+        y_true = [extract_tags(l) for l in labels_text]
+        return {"f1": f1_score(y_true, y_pred)}
+    
+    train_dataset = load_conllu_data(f"{GUM_folder}/en_gum-ud-train.conllu")
+    dev_dataset = load_conllu_data(f"{GUM_folder}/en_gum-ud-dev.conllu")
+    dataset = DatasetDict({"train": Dataset.from_pandas(train_dataset), "dev": Dataset.from_pandas(dev_dataset)})
+    train_data = []
+    for datum in dataset["test"]:
+        train_data.append(
+            {
+                "text": (
+                    f"Sentence: {' '.join(datum['tokens'])}.\n POS:\n {' '.join(datum['pos_tags'])}"
+                )
+            }
+        )
+    validation_data = []
+    for datum in dataset["validation"]:
+        validation_data.append(
+            {
+                "text": (
+                    f"Sentence: {' '.join(datum['tokens'])}.\n POS:\n {' '.join(datum['pos_tags'])}"
+                )
+            }
+        )
+    train_dataset = Dataset.from_list(train_data)
+    validation_dataset = Dataset.from_list(validation_data)
+    output_prefix = "qwen/base_finetuned"
+
+    training_args = SFTConfig(
+            output_dir=f"{output_prefix}/POS_en",
+            eval_strategy="epoch",
+            learning_rate=2e-5,
+            num_train_epochs=3, 
+            weight_decay=0.01,
+            per_device_train_batch_size=8,
+            per_device_eval_batch_size=8,
+            push_to_hub=False,
+            save_strategy="no",
+            fp16=False,
+            max_length=512
+    )
+    trainer = SFTTrainer(
+        model=model_checkpoint,
+        args=training_args,
+        processing_class=tokenizer,
+        train_dataset=train_dataset,
+        eval_dataset=validation_dataset,
+        compute_metrics=compute_metrics
+    )    
+    
+    trainer.train()
+    trainer.save_model(f"{output_prefix}/POS_en")
+
 if __name__ == "__main__":
     roberta = "FacebookAI/xlm-roberta-base"
     bert = "google-bert/bert-base-multilingual-cased"
-    train_POS_model(bert)
+    qwen = "Qwen/Qwen3-0.6B"
+    train_POS_model_causal(qwen)

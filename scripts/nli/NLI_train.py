@@ -2,15 +2,13 @@ from transformers import (
     AutoModelForMaskedLM, 
     AutoTokenizer, 
     AutoModelForSequenceClassification,
-    DataCollatorForTokenClassification,
     DataCollatorWithPadding,
     TrainingArguments, 
     AutoConfig,
     Trainer
 )
 import torch
-from datasets import load_dataset, DatasetDict, Dataset
-import argparse
+from datasets import load_dataset
 import numpy as np
 from torch import nn
 

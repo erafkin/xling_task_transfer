@@ -104,7 +104,7 @@ def train_NLI_model_causal(model_checkpoint):
         train_data.append(
             {
                 "text": (
-                    f"Sentences: {' | '.join([datum['premise'], datum["hypothesis"]])}.\n NLI:\n {datum['label']}"
+                    f"Sentences: {' | '.join([datum['premise'], datum['hypothesis']])}.\n NLI:\n {datum['label']}"
                 )
             }
         )
@@ -113,7 +113,7 @@ def train_NLI_model_causal(model_checkpoint):
         validation_data.append(
             {
                 "text": (
-                    f"Sentences: {' | '.join([datum['premise'], datum["hypothesis"]])}.\n NLI:\n {datum['label']}"
+                    f"Sentences: {' | '.join([datum['premise'], datum['hypothesis']])}.\n NLI:\n {datum['label']}"
                 )
             }
         )

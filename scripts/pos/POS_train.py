@@ -143,6 +143,7 @@ def train_POS_model_causal(model_checkpoint, GUM_folder: str = "GUM_en"):
         return m.group(1).strip().split() if m else []
     
     def compute_metrics(eval_preds):
+        # CURRENTLY NOT USING CUDA OOM
         preds, labels = eval_preds
         preds_text = tokenizer.batch_decode(preds, skip_special_tokens=True)
         labels_text = tokenizer.batch_decode(labels, skip_special_tokens=True)
@@ -183,7 +184,7 @@ def train_POS_model_causal(model_checkpoint, GUM_folder: str = "GUM_en"):
             num_train_epochs=3, 
             weight_decay=0.01,
             per_device_train_batch_size=8,
-            per_device_eval_batch_size=8,
+            per_device_eval_batch_size=4,
             push_to_hub=False,
             save_strategy="no",
             fp16=False,
@@ -194,8 +195,7 @@ def train_POS_model_causal(model_checkpoint, GUM_folder: str = "GUM_en"):
         args=training_args,
         processing_class=tokenizer,
         train_dataset=train_dataset,
-        eval_dataset=validation_dataset,
-        compute_metrics=compute_metrics
+        eval_dataset=validation_dataset
     )    
     
     trainer.train()

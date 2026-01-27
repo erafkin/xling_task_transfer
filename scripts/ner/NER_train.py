@@ -141,6 +141,7 @@ def train_NER_model_causal(model_checkpoint):
         return m.group(1).strip().split() if m else []
         
     def compute_metrics(eval_preds):
+        # CURRENTLY NOT USING CUDA OOM
         preds, labels = eval_preds
         preds_text = tokenizer.batch_decode(preds, skip_special_tokens=True)
         labels_text = tokenizer.batch_decode(labels, skip_special_tokens=True)
@@ -190,9 +191,8 @@ def train_NER_model_causal(model_checkpoint):
         args=training_args,
         processing_class=tokenizer,
         train_dataset=train_dataset,
-        eval_dataset=validation_dataset,
-        compute_metrics=compute_metrics
-    )    
+        eval_dataset=validation_dataset
+        )    
     
     trainer.train()
     trainer.save_model(f"{output_prefix}/NER_en")

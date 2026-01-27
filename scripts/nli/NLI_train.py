@@ -7,8 +7,10 @@ from transformers import (
     AutoConfig,
     Trainer
 )
+from trl import SFTTrainer, SFTConfig
+
 import torch
-from datasets import load_dataset
+from datasets import load_dataset, Dataset
 import numpy as np
 from torch import nn
 
@@ -91,7 +93,59 @@ def train_NLI_model(model_checkpoint):
     trainer.train()
     trainer.save_model(f"{output_prefix}/NLI_en")
 
+def train_NLI_model_causal(model_checkpoint):
+    """
+        parse dataset to be text-to-text
+    """
+   
+    NLI_dataset = load_dataset("facebook/xnli", "en", trust_remote_code=True)
+    train_data = []
+    for datum in NLI_dataset["train"]:
+        train_data.append(
+            {
+                "text": (
+                    f"Sentences: {' | '.join([datum['premise'], datum["hypothesis"]])}.\n NLI:\n {datum['label']}"
+                )
+            }
+        )
+    validation_data = []
+    for datum in NLI_dataset["validation"]:
+        validation_data.append(
+            {
+                "text": (
+                    f"Sentences: {' | '.join([datum['premise'], datum["hypothesis"]])}.\n NLI:\n {datum['label']}"
+                )
+            }
+        )
+    train_dataset = Dataset.from_list(train_data)
+    validation_dataset = Dataset.from_list(validation_data)
+    output_prefix = "qwen/base_finetuned"
+
+    training_args = SFTConfig(
+            output_dir=f"{output_prefix}/NLI_en",
+            eval_strategy="epoch",
+            learning_rate=2e-5,
+            num_train_epochs=3, 
+            weight_decay=0.01,
+            per_device_train_batch_size=8,
+            per_device_eval_batch_size=8,
+            push_to_hub=False,
+            save_strategy="no",
+            fp16=False,
+            max_length=512
+    )
+    trainer = SFTTrainer(
+        model=model_checkpoint,
+        args=training_args,
+        train_dataset=train_dataset,
+        eval_dataset=validation_dataset
+        )    
+    
+    trainer.train()
+    trainer.save_model(f"{output_prefix}/NLI_en")
+
 if __name__ == "__main__":
     roberta = "FacebookAI/xlm-roberta-base"
     bert = "google-bert/bert-base-multilingual-cased"
-    train_NLI_model(bert)
+    qwen = "Qwen/Qwen3-0.6B"
+    train_NLI_model_causal(qwen)

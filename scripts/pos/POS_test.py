@@ -83,35 +83,20 @@ def test_lang_pos_causal(pos, language_model, pretrained_checkpoint, dataset, be
     labels = []
     pos.to(device).eval()
     with torch.no_grad():
-        for i in tqdm(range(0, len(dataset), batch_size)):
-            batch = dataset[i:i+8]
-
-            prompts = [
-                f"Sentence: {' '.join(tokens)}.\n POS:"
-                for tokens in batch["tokens"]
-            ]
-
-            inputs = tokenizer(
-                prompts,
-                return_tensors="pt",
-                padding=True,
-                truncation=True
-            ).to(device)
-
+        for data in tqdm(dataset):
+            prompt = f"Sentence: {' '.join(data['tokens'])}.\n POS:"
+            inputs = tokenizer(prompt, return_tensors="pt").to(device)
             output_ids = pos.generate(
                 **inputs,
                 max_new_tokens=64,
                 do_sample=False
             )
-
-            texts = tokenizer.batch_decode(output_ids, skip_special_tokens=True)
-
-            for text, d in zip(texts, batch):
-                pred_tags = text.split("POS:")[-1].strip().split()
-                preds.append(pred_tags)
-            labels += batch["pos_tags"]
+            text = tokenizer.decode(output_ids[0], skip_special_tokens=True)
+            pred_tags = text.split("POS:")[-1].strip().split()
             print(pred_tags)
-            print(batch["pos_tags"])
+            print(data["pos_tags"])
+            preds += pred_tags
+            labels += data["pos_tags"]
     accuracy = compute_metrics(preds, labels)
     pos.to("cpu")
     del pos
@@ -181,7 +166,7 @@ if __name__ == "__main__":
                 pos_model = AutoModelForCausalLM.from_pretrained(f"{prefix}/{model_base}/POS_en")
                 hyperparameter_results = {}
                 for l in test_lambdas:
-                    accuracy = test_lang_pos_causal(pos_model, f"{prefix}/{model}", base_model, POS_dataset["validation"], l)
+                    accuracy = test_lang_pos_causal(pos_model, f"{prefix}/{model}", base_model, POS_dataset["validation"][:100], l)
                     hyperparameter_results[l] = accuracy
                 print("hyperparamter serach results")
                 print(hyperparameter_results)

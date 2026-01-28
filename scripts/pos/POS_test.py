@@ -77,7 +77,7 @@ def test_lang_pos(pos, language_model, pretrained_checkpoint, dataset, best_lamb
 
 def test_lang_pos_causal(pos, language_model, pretrained_checkpoint, dataset, best_lambda:float=1.0, batch_size:int=8):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    tokenizer = AutoTokenizer.from_pretrained(pretrained_checkpoint, trust_remote_code=True, padding_size="left")
+    tokenizer = AutoTokenizer.from_pretrained(pretrained_checkpoint, trust_remote_code=True, padding_side="left")
     tokenizer.pad_token = tokenizer.eos_token
     lv = get_language_vector_causal(pretrained_checkpoint, language_model)
     pos = apply_language_vector_to_model(pos, lv, best_lambda)
@@ -94,6 +94,7 @@ def test_lang_pos_causal(pos, language_model, pretrained_checkpoint, dataset, be
                 do_sample=False
             )
             text = tokenizer.decode(output_ids[0], skip_special_tokens=True)
+            print(text)
             pred_tags = text.split("POS:")[-1].strip().split()
             preds += pred_tags
             labels += data["pos_tags"]
@@ -136,11 +137,10 @@ if __name__ == "__main__":
                     "language_fr_done",
                     "language_ru_done"
                     ]
-    overall_hyperparameter_results = {}
     for idx, model in enumerate(language_models):
-        overall_hyperparameter_results[model] = {}
+        overall_hyperparameter_results = {}
         for base_model_str in base_models:
-            overall_hyperparameter_results[model][base_model_str] = {}
+            overall_hyperparameter_results[base_model_str] = {}
             if base_model_str == "bert":
                 base_model = "google-bert/bert-base-multilingual-cased"
                 prefix = "bert-multilingual"
@@ -168,9 +168,9 @@ if __name__ == "__main__":
                 for l in test_lambdas:
                     accuracy = test_lang_pos_causal(pos_model, f"{prefix}/{model}", base_model, POS_dataset["validation"].select(range(10)), l)
                     hyperparameter_results[l] = accuracy
-                print("hyperparamter serach results")
+                print("hyperparamter search results")
                 print(hyperparameter_results)
-                overall_hyperparameter_results[model][base_model_str] = hyperparameter_results
+                overall_hyperparameter_results[base_model_str] = hyperparameter_results
                 best_lambda = max(hyperparameter_results, key=hyperparameter_results.get)
                 print(best_lambda)
                 with open(f"output/{prefix}/{model_base}/POS.txt", "a") as f:
@@ -238,9 +238,9 @@ if __name__ == "__main__":
                     f.write(f"best lambda: {best_lambda}\n")
                     f.write(f"accuracy: {accuracy}\n")
                     f.close()
-    with open(f"output/POS_pretrained_hyperparameter_search.json", "w") as f:
-        json.dump(overall_hyperparameter_results, f, indent=4)
-        f.close()
+        with open(f"output/{base_model_str}/base_finetuned/POS_pretrained_hyperparameter_search_{base_model_str}.json", "w") as f:
+            json.dump(overall_hyperparameter_results, f, indent=4)
+            f.close()
 
 
 

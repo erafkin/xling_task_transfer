@@ -160,7 +160,7 @@ def train_POS_model_causal(model_checkpoint, GUM_folder: str = "GUM_en"):
         train_data.append(
             {
                 "text": (
-                    f"Sentence: {' '.join(datum['tokens'])}.\n POS:\n {' '.join(datum['pos_tags'])}"
+                    f"{' '.join(datum['tokens'])}.\n POS:\n {' '.join(datum['pos_tags'])}"
                 )
             }
         )
@@ -169,7 +169,7 @@ def train_POS_model_causal(model_checkpoint, GUM_folder: str = "GUM_en"):
         validation_data.append(
             {
                 "text": (
-                    f"Sentence: {' '.join(datum['tokens'])}.\n POS:\n {' '.join(datum['pos_tags'])}"
+                    f"{' '.join(datum['tokens'])}.\n POS:\n {' '.join(datum['pos_tags'])}"
                 )
             }
         )

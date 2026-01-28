@@ -171,10 +171,10 @@ if __name__ == "__main__":
 
             tokenizer = AutoTokenizer.from_pretrained(base_model)
             if base_model_str == "qwen":
-                pos_model = AutoModelForCausalLM.from_pretrained(f"{prefix}/{model_base}/POS_en")
                 hyperparameter_results = {}
                 for l in test_lambdas:
                     print("lambda: ", l)
+                    pos_model = AutoModelForCausalLM.from_pretrained(f"{prefix}/{model_base}/POS_en")
                     accuracy = test_lang_pos_causal(pos_model, f"{prefix}/{model}", base_model, POS_dataset["validation"].select(range(100)), l)
                     hyperparameter_results[l] = accuracy
                 print("hyperparamter search results")
@@ -184,6 +184,7 @@ if __name__ == "__main__":
                 print(best_lambda)
                 with open(f"output/{prefix}/{model_base}/POS.txt", "a") as f:
                     print("language model", model)
+                    pos_model = AutoModelForCausalLM.from_pretrained(f"{prefix}/{model_base}/POS_en")
                     accuracy= test_lang_pos_causal(pos_model, f"{prefix}/{model}", base_model, POS_dataset["test"], best_lambda)
                     print(f"accuracy: {accuracy}")  
                     f.write(f"\n======language: {model.split('_')[1]}=======\n")

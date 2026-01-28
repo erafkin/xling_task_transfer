@@ -86,7 +86,7 @@ def test_lang_pos_causal(pos, language_model, pretrained_checkpoint, dataset, be
     pos.to(device).eval()
     with torch.no_grad():
         for data in tqdm(dataset):
-            prompt = f"Sentence: {' '.join(data['tokens'])}.\n POS:"
+            prompt = f"{' '.join(data['tokens'])}.\n POS:"
             inputs = tokenizer(prompt, return_tensors="pt").to(device)
             output_ids = pos.generate(
                 **inputs,
@@ -94,7 +94,6 @@ def test_lang_pos_causal(pos, language_model, pretrained_checkpoint, dataset, be
                 do_sample=False
             )
             text = tokenizer.decode(output_ids[0], skip_special_tokens=True)
-            print(text)
             pred_tags = text.split("POS:")[-1].strip().split()
             preds += pred_tags
             labels += data["pos_tags"]
@@ -166,7 +165,7 @@ if __name__ == "__main__":
                 pos_model = AutoModelForCausalLM.from_pretrained(f"{prefix}/{model_base}/POS_en")
                 hyperparameter_results = {}
                 for l in test_lambdas:
-                    accuracy = test_lang_pos_causal(pos_model, f"{prefix}/{model}", base_model, POS_dataset["validation"].select(range(10)), l)
+                    accuracy = test_lang_pos_causal(pos_model, f"{prefix}/{model}", base_model, POS_dataset["validation"].select(range(100)), l)
                     hyperparameter_results[l] = accuracy
                 print("hyperparamter search results")
                 print(hyperparameter_results)

@@ -24,9 +24,6 @@ def apply_language_vector_to_model(pos_model_checkpoint: str, language_vector:Ta
     return pos_model
 
 def compute_metrics(predictions, labels):
-    print(predictions)
-    print(labels)
-
     # Remove ignored labels (-100)
     y_pred = [
         [p for (p, l) in zip(prediction, label) if l != -100]
@@ -39,6 +36,17 @@ def compute_metrics(predictions, labels):
     # Simple accuracy calculation
     total = sum(len(pred) for pred in y_pred)
     correct = sum(1 for pred, lab in zip(y_pred, y_true) for p, l in zip(pred, lab) if p == l)
+    accuracy = correct / total if total > 0 else 0
+    return accuracy
+
+
+def compute_metrics_causal(predictions, labels):
+    print("PREDICTIONS: ", predictions[0])
+    print("LABELS: ", labels[0])
+
+    # Simple accuracy calculation
+    total = sum(len(pred) for pred in predictions)
+    correct = sum(1 for pred, lab in zip(predictions, labels) for p, l in zip(pred, lab) if p == l)
     accuracy = correct / total if total > 0 else 0
     return accuracy
 
@@ -95,9 +103,9 @@ def test_lang_pos_causal(pos, language_model, pretrained_checkpoint, dataset, be
             )
             text = tokenizer.decode(output_ids[0], skip_special_tokens=True)
             pred_tags = text.split("POS:")[-1].strip().split()
-            preds += pred_tags
-            labels += data["pos_tags"]
-    accuracy = compute_metrics(preds, labels)
+            preds.append(pred_tags)
+            labels.append(data["pos_tags"])
+    accuracy = compute_metrics_causal(preds, labels)
     pos.to("cpu")
     del pos
     gc.collect()
@@ -165,6 +173,7 @@ if __name__ == "__main__":
                 pos_model = AutoModelForCausalLM.from_pretrained(f"{prefix}/{model_base}/POS_en")
                 hyperparameter_results = {}
                 for l in test_lambdas:
+                    print("lambda: ", l)
                     accuracy = test_lang_pos_causal(pos_model, f"{prefix}/{model}", base_model, POS_dataset["validation"].select(range(100)), l)
                     hyperparameter_results[l] = accuracy
                 print("hyperparamter search results")
@@ -174,7 +183,7 @@ if __name__ == "__main__":
                 print(best_lambda)
                 with open(f"output/{prefix}/{model_base}/POS.txt", "a") as f:
                     print("language model", model)
-                    accuracy= test_lang_pos(pos_model, f"{prefix}/{model}", base_model, POS_dataset["test"], best_lambda)
+                    accuracy= test_lang_pos_causal(pos_model, f"{prefix}/{model}", base_model, POS_dataset["test"], best_lambda)
                     print(f"accuracy: {accuracy}")  
                     f.write(f"\n======language: {model.split('_')[1]}=======\n")
                     f.write(f"best lambda: {best_lambda}\n")

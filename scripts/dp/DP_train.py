@@ -6,6 +6,11 @@ from datasets import Dataset, DatasetDict
 
 from scripts.dp.dp_model import TransformerForBiaffineParsing, DataCollatorForDependencyParsing
 from scripts.task_utils import load_conllu_data
+
+from seqeval.metrics import f1_score
+import re
+from trl import SFTTrainer, SFTConfig
+
 UD_HEAD_LABELS = [
     "_",
     "acl",
@@ -140,9 +145,62 @@ def train_DP_model(model_checkpoint, GUM_folder: str = "GUM_en"):
     trainer.train()
     trainer.save_model(f"{output_prefix}/DP_en")
 
+def train_DP_model_causal(model_checkpoint, GUM_folder: str = "GUM_en"):
+    tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, trust_remote_code=True)
+    tokenizer.pad_token = tokenizer.eos_token
+    train_dataset = load_conllu_data(f"{GUM_folder}/en_gum-ud-train.conllu")
+    dev_dataset = load_conllu_data(f"{GUM_folder}/en_gum-ud-dev.conllu")
+    dataset = DatasetDict({"train": Dataset.from_pandas(train_dataset), "dev": Dataset.from_pandas(dev_dataset)})
+    train_data = []
+    for datum in dataset["train"]:
+        train_data.append(
+            {
+                "text": (
+                    f"Sentence: {' '.join(datum['tokens'])}.\n DP:\n {' '.join([f'{head}:{rel}' for head, rel in zip(datum['dep_head'], datum['dep_rel'])])}"
+                )
+            }
+        )
+    validation_data = []
+    for datum in dataset["dev"]:
+        validation_data.append(
+            {
+                "text": (
+                    f"Sentence: {' '.join(datum['tokens'])}.\n DP:\n {' '.join([f'{head}:{rel}' for head, rel in zip(datum['dep_head'], datum['dep_rel'])])}"
+                )
+            }
+        )
+    train_dataset = Dataset.from_list(train_data)
+    validation_dataset = Dataset.from_list(validation_data)
+    output_prefix = "qwen/base_finetuned"
+
+    training_args = SFTConfig(
+            output_dir=f"{output_prefix}/DP_en",
+            eval_strategy="epoch",
+            learning_rate=2e-5,
+            num_train_epochs=10, 
+            weight_decay=0.01,
+            per_device_train_batch_size=8,
+            per_device_eval_batch_size=4,
+            push_to_hub=False,
+            save_strategy="no",
+            fp16=False,
+            max_length=512
+    )
+    trainer = SFTTrainer(
+        model=model_checkpoint,
+        args=training_args,
+        processing_class=tokenizer,
+        train_dataset=train_dataset,
+        eval_dataset=validation_dataset
+    )    
+    
+    trainer.train()
+    trainer.save_model(f"{output_prefix}/DP_en")
+
 if __name__ == "__main__":
     roberta = "FacebookAI/xlm-roberta-base"
     bert = "google-bert/bert-base-multilingual-cased"
-    train_DP_model(roberta)
+    qwen = "Qwen/Qwen3-0.6B"
+    train_DP_model_causal(qwen)
 
 

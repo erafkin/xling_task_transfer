@@ -160,7 +160,7 @@ def train_POS_model_causal(model_checkpoint, GUM_folder: str = "GUM_en"):
         train_data.append(
             {
                 "text": (
-                    f"{' '.join(datum['tokens'])}.\n POS:\n {' '.join(datum['pos_tags'])}"
+                    f"Sentence: {' '.join(datum['tokens'])}.\n POS:\n {' '.join(datum['pos_tags'])}"
                 )
             }
         )
@@ -169,7 +169,7 @@ def train_POS_model_causal(model_checkpoint, GUM_folder: str = "GUM_en"):
         validation_data.append(
             {
                 "text": (
-                    f"{' '.join(datum['tokens'])}.\n POS:\n {' '.join(datum['pos_tags'])}"
+                    f"Sentence: {' '.join(datum['tokens'])}.\n POS:\n {' '.join(datum['pos_tags'])}"
                 )
             }
         )
@@ -181,7 +181,7 @@ def train_POS_model_causal(model_checkpoint, GUM_folder: str = "GUM_en"):
             output_dir=f"{output_prefix}/POS_en",
             eval_strategy="epoch",
             learning_rate=2e-5,
-            num_train_epochs=3, 
+            num_train_epochs=10, 
             weight_decay=0.01,
             per_device_train_batch_size=8,
             per_device_eval_batch_size=4,

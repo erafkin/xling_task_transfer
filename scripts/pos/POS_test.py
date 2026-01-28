@@ -86,7 +86,7 @@ def test_lang_pos_causal(pos, language_model, pretrained_checkpoint, dataset, be
     pos.to(device).eval()
     with torch.no_grad():
         for data in tqdm(dataset):
-            prompt = f"{' '.join(data['tokens'])}.\n POS:"
+            prompt = f"Sentence: {' '.join(data['tokens'])}.\n POS:"
             inputs = tokenizer(prompt, return_tensors="pt").to(device)
             output_ids = pos.generate(
                 **inputs,

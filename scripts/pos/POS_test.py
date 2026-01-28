@@ -24,6 +24,8 @@ def apply_language_vector_to_model(pos_model_checkpoint: str, language_vector:Ta
     return pos_model
 
 def compute_metrics(predictions, labels):
+    print(predictions)
+    print(labels)
 
     # Remove ignored labels (-100)
     y_pred = [
@@ -93,8 +95,6 @@ def test_lang_pos_causal(pos, language_model, pretrained_checkpoint, dataset, be
             )
             text = tokenizer.decode(output_ids[0], skip_special_tokens=True)
             pred_tags = text.split("POS:")[-1].strip().split()
-            print(pred_tags)
-            print(data["pos_tags"])
             preds += pred_tags
             labels += data["pos_tags"]
     accuracy = compute_metrics(preds, labels)
@@ -166,7 +166,7 @@ if __name__ == "__main__":
                 pos_model = AutoModelForCausalLM.from_pretrained(f"{prefix}/{model_base}/POS_en")
                 hyperparameter_results = {}
                 for l in test_lambdas:
-                    accuracy = test_lang_pos_causal(pos_model, f"{prefix}/{model}", base_model, POS_dataset["validation"].select(range(100)), l)
+                    accuracy = test_lang_pos_causal(pos_model, f"{prefix}/{model}", base_model, POS_dataset["validation"].select(range(10)), l)
                     hyperparameter_results[l] = accuracy
                 print("hyperparamter serach results")
                 print(hyperparameter_results)

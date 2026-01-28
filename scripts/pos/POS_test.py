@@ -109,7 +109,9 @@ def test_lang_pos_causal(pos, language_model, pretrained_checkpoint, dataset, be
             for text, d in zip(texts, batch):
                 pred_tags = text.split("POS:")[-1].strip().split()
                 preds.append(pred_tags)
-                labels.append(d["pos_tags"])
+            labels += batch["pos_tags"]
+            print(pred_tags)
+            print(batch["pos_tags"])
     accuracy = compute_metrics(preds, labels)
     pos.to("cpu")
     del pos

@@ -75,7 +75,7 @@ def test_lang_pos(pos, language_model, pretrained_checkpoint, dataset, best_lamb
 
 def test_lang_pos_causal(pos, language_model, pretrained_checkpoint, dataset, best_lambda:float=1.0, batch_size:int=8):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    tokenizer = AutoTokenizer.from_pretrained(pretrained_checkpoint, trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(pretrained_checkpoint, trust_remote_code=True, padding_size="left")
     tokenizer.pad_token = tokenizer.eos_token
     lv = get_language_vector_causal(pretrained_checkpoint, language_model)
     pos = apply_language_vector_to_model(pos, lv, best_lambda)
@@ -166,7 +166,7 @@ if __name__ == "__main__":
                 pos_model = AutoModelForCausalLM.from_pretrained(f"{prefix}/{model_base}/POS_en")
                 hyperparameter_results = {}
                 for l in test_lambdas:
-                    accuracy = test_lang_pos_causal(pos_model, f"{prefix}/{model}", base_model, POS_dataset["validation"][:100], l)
+                    accuracy = test_lang_pos_causal(pos_model, f"{prefix}/{model}", base_model, POS_dataset["validation"].select(range(100)), l)
                     hyperparameter_results[l] = accuracy
                 print("hyperparamter serach results")
                 print(hyperparameter_results)

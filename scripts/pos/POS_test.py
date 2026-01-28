@@ -83,18 +83,33 @@ def test_lang_pos_causal(pos, language_model, pretrained_checkpoint, dataset, be
     labels = []
     pos.to(device).eval()
     with torch.no_grad():
-        for data in tqdm(dataset):
-            prompt = f"Sentence: {' '.join(data['tokens'])}.\n POS:"
-            inputs = tokenizer(prompt, return_tensors="pt").to(device)
+        for i in tqdm(range(0, len(dataset), 8)):
+            batch = dataset[i:i+8]
+
+            prompts = [
+                f"Sentence: {' '.join(d['tokens'])}.\n POS:"
+                for d in batch
+            ]
+
+            inputs = tokenizer(
+                prompts,
+                return_tensors="pt",
+                padding=True,
+                truncation=True
+            ).to(device)
+
             output_ids = pos.generate(
                 **inputs,
                 max_new_tokens=64,
                 do_sample=False
             )
-            text = tokenizer.decode(output_ids[0], skip_special_tokens=True)
-            pred_tags = text.split("POS:")[-1].strip().split()
-            preds += pred_tags
-            labels += data["pos_tags"]
+
+            texts = tokenizer.batch_decode(output_ids, skip_special_tokens=True)
+
+            for text, d in zip(texts, batch):
+                pred_tags = text.split("POS:")[-1].strip().split()
+                preds.append(pred_tags)
+                labels.append(d["pos_tags"])
     accuracy = compute_metrics(preds, labels)
     pos.to("cpu")
     del pos

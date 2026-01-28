@@ -48,6 +48,7 @@ def compute_metrics_causal(predictions, labels):
     total = sum(len(pred) for pred in predictions)
     correct = sum(1 for pred, lab in zip(predictions, labels) for p, l in zip(pred, lab) if p == l)
     accuracy = correct / total if total > 0 else 0
+    print("accuracy: ", accuracy)
     return accuracy
 
 def get_label_mapping():

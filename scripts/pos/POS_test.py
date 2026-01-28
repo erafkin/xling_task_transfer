@@ -73,7 +73,7 @@ def test_lang_pos(pos, language_model, pretrained_checkpoint, dataset, best_lamb
     gc.collect()
     return accuracy
 
-def test_lang_pos_causal(pos, language_model, pretrained_checkpoint, dataset, best_lambda:float=1.0):
+def test_lang_pos_causal(pos, language_model, pretrained_checkpoint, dataset, best_lambda:float=1.0, batch_size:int=8):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     tokenizer = AutoTokenizer.from_pretrained(pretrained_checkpoint, trust_remote_code=True)
     tokenizer.pad_token = tokenizer.eos_token
@@ -83,12 +83,12 @@ def test_lang_pos_causal(pos, language_model, pretrained_checkpoint, dataset, be
     labels = []
     pos.to(device).eval()
     with torch.no_grad():
-        for i in tqdm(range(0, len(dataset), 8)):
+        for i in tqdm(range(0, len(dataset), batch_size)):
             batch = dataset[i:i+8]
 
             prompts = [
-                f"Sentence: {' '.join(d['tokens'])}.\n POS:"
-                for d in batch
+                f"Sentence: {' '.join(tokens)}.\n POS:"
+                for tokens in batch["tokens"]
             ]
 
             inputs = tokenizer(

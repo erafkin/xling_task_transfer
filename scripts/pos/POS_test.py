@@ -14,6 +14,10 @@ def get_language_vector(base_model: str, saved_language: str):
     lang_vector = TaskVector(pretrained_model=AutoModelForMaskedLM.from_pretrained(base_model),
                              finetuned_model=AutoModelForMaskedLM.from_pretrained(saved_language, local_files_only=True))
     return lang_vector
+def get_language_vector_causal(base_model: str, saved_language: str):
+    lang_vector = TaskVector(pretrained_model=AutoModelForCausalLM.from_pretrained(base_model),
+                             finetuned_model=AutoModelForCausalLM.from_pretrained(saved_language, local_files_only=True))
+    return lang_vector
 
 def apply_language_vector_to_model(pos_model_checkpoint: str, language_vector:TaskVector, lambda_coef: float):
     pos_model = language_vector.apply_to(pos_model_checkpoint, scaling_coef=lambda_coef)
@@ -73,7 +77,7 @@ def test_lang_pos_causal(pos, language_model, pretrained_checkpoint, dataset, be
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     tokenizer = AutoTokenizer.from_pretrained(pretrained_checkpoint, trust_remote_code=True)
     tokenizer.pad_token = tokenizer.eos_token
-    lv = get_language_vector(pretrained_checkpoint, language_model)
+    lv = get_language_vector_causal(pretrained_checkpoint, language_model)
     pos = apply_language_vector_to_model(pos, lv, best_lambda)
     preds = []
     labels = []

@@ -7,6 +7,7 @@ bitsandbytes
 evaluate
 trl
 seqeval
+peft
 # scikit-learn
 # matplotlib
 # urielplus

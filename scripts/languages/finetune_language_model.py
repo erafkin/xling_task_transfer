@@ -79,6 +79,7 @@ def train_language_model(model_checkpoint: str,
         )
         model = prepare_model_for_kbit_training(model)
         model = get_peft_model(model, lora_config)
+        model.print_trainable_parameters()
         
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token

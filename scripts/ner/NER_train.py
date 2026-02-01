@@ -6,6 +6,7 @@ from transformers import (
     AutoConfig,
     Trainer,
     AutoModelForCausalLM,
+    BitsAndBytesConfig
 )
 from seqeval.metrics import f1_score
 import re

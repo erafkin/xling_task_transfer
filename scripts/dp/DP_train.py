@@ -1,8 +1,9 @@
 import torch
 from torch import nn
 import numpy as np
-from transformers import AutoTokenizer, AutoConfig, AutoModelForMaskedLM, Trainer, TrainingArguments
+from transformers import AutoTokenizer, AutoConfig, AutoModelForMaskedLM, Trainer, TrainingArguments, AutoModelForCausalLM, BitsAndBytesConfig
 from datasets import Dataset, DatasetDict
+from peft import LoraConfig, get_peft_model,  prepare_model_for_kbit_training
 
 from scripts.dp.dp_model import TransformerForBiaffineParsing, DataCollatorForDependencyParsing
 from scripts.task_utils import load_conllu_data
@@ -147,7 +148,34 @@ def train_DP_model(model_checkpoint, GUM_folder: str = "GUM_en"):
 
 def train_DP_model_causal(model_checkpoint, GUM_folder: str = "GUM_en"):
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, trust_remote_code=True)
-    tokenizer.pad_token = tokenizer.eos_token
+    lora_config = LoraConfig(
+            r=8,
+            lora_alpha=16,
+            lora_dropout=0.05,
+            bias="none",
+            target_modules=["q_proj","v_proj"],
+        )   
+    # quantize    
+    bnb_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_use_double_quant=True,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_compute_dtype=torch.float16
+    )
+    model = AutoModelForCausalLM.from_pretrained(
+        model_checkpoint,
+        dtype=torch.float32,
+        quantization_config=bnb_config,
+        device_map="auto"
+    )
+    model = prepare_model_for_kbit_training(model)
+    model = get_peft_model(model, lora_config)
+    model.print_trainable_parameters()
+    
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+        model.config.pad_token_id = tokenizer.eos_token_id
+
     train_dataset = load_conllu_data(f"{GUM_folder}/en_gum-ud-train.conllu")
     dev_dataset = load_conllu_data(f"{GUM_folder}/en_gum-ud-dev.conllu")
     dataset = DatasetDict({"train": Dataset.from_pandas(train_dataset), "dev": Dataset.from_pandas(dev_dataset)})
@@ -187,7 +215,7 @@ def train_DP_model_causal(model_checkpoint, GUM_folder: str = "GUM_en"):
             max_length=512
     )
     trainer = SFTTrainer(
-        model=model_checkpoint,
+        model=model,
         args=training_args,
         processing_class=tokenizer,
         train_dataset=train_dataset,

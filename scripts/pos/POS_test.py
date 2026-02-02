@@ -99,12 +99,12 @@ def test_lang_pos_causal(pos, language_model, pretrained_checkpoint, dataset, be
     model.set_adapter("merged")
     preds = []
     labels = []
-    pos.to(device).eval()
+    model.to(device).eval()
     with torch.no_grad():
         for data in tqdm(dataset):
             prompt = f"Sentence: {' '.join(data['tokens'])}.\n POS:"
             inputs = tokenizer(prompt, return_tensors="pt").to(device)
-            output_ids = pos.generate(
+            output_ids = model.generate(
                 **inputs,
                 max_new_tokens=64,
                 do_sample=False
@@ -114,8 +114,8 @@ def test_lang_pos_causal(pos, language_model, pretrained_checkpoint, dataset, be
             preds.append(pred_tags)
             labels.append(data["pos_tags"])
     accuracy = compute_metrics_causal(preds, labels)
-    pos.to("cpu")
-    del pos
+    model.to("cpu")
+    del model
     gc.collect()
     return accuracy
 

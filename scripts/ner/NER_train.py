@@ -136,8 +136,8 @@ def train_NER_model_causal(model_checkpoint):
     """
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, trust_remote_code=True)
     lora_config = LoraConfig(
-            r=8,
-            lora_alpha=16,
+            r=32,
+            lora_alpha=64,
             lora_dropout=0.05,
             bias="none",
             target_modules=["q_proj","v_proj"],

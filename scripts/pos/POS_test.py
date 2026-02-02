@@ -192,7 +192,7 @@ if __name__ == "__main__":
                     hyperparameter_results[l] = accuracy
                 print("hyperparamter search results")
                 print(hyperparameter_results)
-                overall_hyperparameter_results[base_model_str] = hyperparameter_results
+                overall_hyperparameter_results[model][base_model_str] = hyperparameter_results
                 best_lambda = max(hyperparameter_results, key=hyperparameter_results.get)
                 print(best_lambda)
                 with open(f"output/{prefix}/{model_base}/POS.txt", "a") as f:

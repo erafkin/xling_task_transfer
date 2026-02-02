@@ -3,7 +3,7 @@ import torch
 from torch.utils.data import DataLoader
 from typing import List, Optional
 from datasets import load_dataset
-from transformers import AutoModelForMaskedLM, AutoTokenizer, DataCollatorForTokenClassification
+from transformers import AutoModelForMaskedLM, AutoTokenizer, DataCollatorForTokenClassification, AutoModelForCausalLM
 from tqdm import tqdm
 from safetensors.torch import load_model
 from scripts.task_vectors import TaskVector
@@ -13,6 +13,12 @@ def get_language_vector(base_model: str, saved_language: str):
     lang_vector = TaskVector(pretrained_model=AutoModelForMaskedLM.from_pretrained(base_model),
                              finetuned_model=AutoModelForMaskedLM.from_pretrained(saved_language, local_files_only=True))
     return lang_vector
+
+def get_language_vector_causal(base_model: str, saved_language: str):
+    lang_vector = TaskVector(pretrained_model=AutoModelForCausalLM.from_pretrained(base_model),
+                             finetuned_model=AutoModelForCausalLM.from_pretrained(saved_language, local_files_only=True))
+    return lang_vector
+
 
 def apply_language_vector_to_model(ner_model_checkpoint: str, language_vector:TaskVector, lambda_coef: float):
     ner_model = language_vector.apply_to(ner_model_checkpoint, scaling_coef=lambda_coef)
@@ -101,6 +107,34 @@ def test_lang_ner(ner, language_model, pretrained_checkpoint, dataset, best_lamb
             preds.extend(predictions)
             labels.extend(batch["labels"].cpu().numpy())
     accuracy = compute_metrics(preds, labels, uner)
+    ner.to("cpu")
+    del ner
+    gc.collect()
+    return accuracy
+
+def test_lang_ner_causal(ner, language_model, pretrained_checkpoint, dataset, best_lambda:float=1.0, batch_size:int=8):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    tokenizer = AutoTokenizer.from_pretrained(pretrained_checkpoint, trust_remote_code=True, padding_side="left")
+    tokenizer.pad_token = tokenizer.eos_token
+    lv = get_language_vector_causal(pretrained_checkpoint, language_model)
+    ner = apply_language_vector_to_model(ner, lv, best_lambda)
+    preds = []
+    labels = []
+    ner.to(device).eval()
+    with torch.no_grad():
+        for data in tqdm(dataset):
+            prompt = f"Sentence: {' '.join(data['tokens'])}.\n NER:"
+            inputs = tokenizer(prompt, return_tensors="pt").to(device)
+            output_ids = ner.generate(
+                **inputs,
+                max_new_tokens=64,
+                do_sample=False
+            )
+            text = tokenizer.decode(output_ids[0], skip_special_tokens=True)
+            pred_tags = text.split("NER:")[-1].strip().split()
+            preds += pred_tags
+            labels += data["ner_tags"]
+    accuracy = compute_metrics(preds, labels)
     ner.to("cpu")
     del ner
     gc.collect()

@@ -2,7 +2,8 @@ import torch
 from torch.utils.data import DataLoader
 from typing import List
 from datasets import Dataset, DatasetDict
-from transformers import AutoModelForMaskedLM, AutoTokenizer, DataCollatorForTokenClassification, AutoModelForCausalLM
+from transformers import AutoModelForMaskedLM, AutoTokenizer, DataCollatorForTokenClassification, AutoModelForCausalLM, BitsAndBytesConfig
+from peft import PeftModel
 from tqdm import tqdm
 from safetensors.torch import load_model
 from scripts.task_vectors import TaskVector
@@ -88,8 +89,14 @@ def test_lang_pos_causal(pos, language_model, pretrained_checkpoint, dataset, be
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     tokenizer = AutoTokenizer.from_pretrained(pretrained_checkpoint, trust_remote_code=True, padding_side="left")
     tokenizer.pad_token = tokenizer.eos_token
-    model = AutoModelForCausalLM.from_pretrained(pretrained_checkpoint)
-    model.load_adapter(pos, adapter_name="task_adapter")
+    bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.float16
+        )
+    model =  AutoModelForCausalLM.from_pretrained(pretrained_checkpoint, quantization_config=bnb_config)
+    model = PeftModel.from_pretrained(model, pos, adapter_name="task_adapter")
     model.load_adapter(language_model, adapter_name="language_adapter")
     model.add_weighted_adapter(["task_adapter", "language_adapter"], 
                                                     [1, best_lambda], 

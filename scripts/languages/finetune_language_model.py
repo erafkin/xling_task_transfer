@@ -24,7 +24,8 @@ def train_language_model(model_checkpoint: str,
     
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
     def preprocess_function(examples):
-        return tokenizer(examples["text"], padding="max_length", truncation=True, max_length=128)
+        max_length = 512 if "Qwen" in model_checkpoint else 128
+        return tokenizer(examples["text"], padding="max_length", truncation=True, max_length=max_length)
     if mlm:
         data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer,mlm=mlm, mlm_probability=mlm_prob)
     else:
@@ -57,29 +58,29 @@ def train_language_model(model_checkpoint: str,
         )     
     else:
         #PEFT
-        lora_config = LoraConfig(
-            r=32,
-            lora_alpha=64,
-            lora_dropout=0.05,
-            bias="none",
-            target_modules=["q_proj","v_proj"],
-        )   
-        # quantize    
-        bnb_config = BitsAndBytesConfig(
-            load_in_4bit=True,
-            bnb_4bit_use_double_quant=True,
-            bnb_4bit_quant_type="nf4",
-            bnb_4bit_compute_dtype=torch.float16
-        )
+        # lora_config = LoraConfig(
+        #     r=32,
+        #     lora_alpha=64,
+        #     lora_dropout=0.05,
+        #     bias="none",
+        #     target_modules=["q_proj","v_proj"],
+        # )   
+        # # quantize    
+        # bnb_config = BitsAndBytesConfig(
+        #     load_in_4bit=True,
+        #     bnb_4bit_use_double_quant=True,
+        #     bnb_4bit_quant_type="nf4",
+        #     bnb_4bit_compute_dtype=torch.float16
+        # )
         model = AutoModelForCausalLM.from_pretrained(
             model_checkpoint,
             dtype=torch.float32,
-            quantization_config=bnb_config,
+            # quantization_config=bnb_config,
             device_map="auto"
         )
-        model = prepare_model_for_kbit_training(model)
-        model = get_peft_model(model, lora_config)
-        model.print_trainable_parameters()
+        # model = prepare_model_for_kbit_training(model)
+        # model = get_peft_model(model, lora_config)
+        # model.print_trainable_parameters()
         
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
@@ -139,5 +140,5 @@ if __name__ == "__main__":
             raise Exception(f"{checkpoint} not allowed")
         for language in tqdm(languages):
             if not os.path.exists(f"{output_dir}/language_{language}_done"):
-                train_language_model(model_checkpoint=checkpoint, language=language, mlm=mlm, output_dir=output_dir,num_samples=1000000, batch_size=batch_size)
+                train_language_model(model_checkpoint=checkpoint, language=language, mlm=mlm, output_dir=output_dir,num_samples=2000000, batch_size=batch_size)
            

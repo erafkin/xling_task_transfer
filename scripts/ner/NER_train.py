@@ -135,30 +135,13 @@ def train_NER_model_causal(model_checkpoint):
         parse dataset to be text-to-text
     """
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, trust_remote_code=True)
-    lora_config = LoraConfig(
-            r=32,
-            lora_alpha=64,
-            lora_dropout=0.05,
-            bias="none",
-            target_modules=["q_proj","v_proj"],
-        )   
-    # quantize    
-    bnb_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_use_double_quant=True,
-        bnb_4bit_quant_type="nf4",
-        bnb_4bit_compute_dtype=torch.float16
-    )
+
     model = AutoModelForCausalLM.from_pretrained(
         model_checkpoint,
         dtype=torch.float32,
-        quantization_config=bnb_config,
         device_map="auto"
     )
-    model = prepare_model_for_kbit_training(model)
-    model = get_peft_model(model, lora_config)
-    model.print_trainable_parameters()
-    
+
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
         model.config.pad_token_id = tokenizer.eos_token_id

@@ -89,21 +89,10 @@ def test_lang_pos_causal(pos, language_model, pretrained_checkpoint, dataset, be
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     tokenizer = AutoTokenizer.from_pretrained(pretrained_checkpoint, trust_remote_code=True, padding_side="left")
     tokenizer.pad_token = tokenizer.eos_token
-    bnb_config = BitsAndBytesConfig(
-            load_in_4bit=True,
-            bnb_4bit_use_double_quant=True,
-            bnb_4bit_quant_type="nf4",
-            bnb_4bit_compute_dtype=torch.float16
-        )
-    model =  AutoModelForCausalLM.from_pretrained(pretrained_checkpoint, quantization_config=bnb_config)
-    model = PeftModel.from_pretrained(model, pos, adapter_name="task_adapter")
-    model.load_adapter(language_model, adapter_name="language_adapter")
-    model.add_weighted_adapter(["task_adapter", "language_adapter"], 
-                                                    [1, best_lambda], 
-                                                    adapter_name="merged", 
-                                                    combination_type="linear" # do we want to change this?
-                                                    )
-    model.set_adapter("merged")
+    lv = get_language_vector_causal(pretrained_checkpoint, language_model)
+
+    pos = apply_language_vector_to_model(pos, lv, best_lambda)
+
     preds = []
     labels = []
     model.to(device).eval()
@@ -111,7 +100,7 @@ def test_lang_pos_causal(pos, language_model, pretrained_checkpoint, dataset, be
         for data in tqdm(dataset):
             prompt = f"Sentence: {' '.join(data['tokens'])}.\n POS:"
             inputs = tokenizer(prompt, return_tensors="pt").to(device)
-            output_ids = model.generate(
+            output_ids = pos.generate(
                 **inputs,
                 max_new_tokens=64,
                 do_sample=False
@@ -186,18 +175,20 @@ if __name__ == "__main__":
             tokenizer = AutoTokenizer.from_pretrained(base_model)
             if base_model_str == "qwen":
                 hyperparameter_results = {}
+                pos =  AutoModelForCausalLM.from_pretrained(f"{prefix}/{model_base}/POS_en")
                 for l in test_lambdas:
                     print("lambda: ", l)
-                    accuracy = test_lang_pos_causal(f"{prefix}/{model_base}/POS_en", f"{prefix}/{model}", base_model, POS_dataset["validation"].select(range(100)), l)
+                    accuracy = test_lang_pos_causal(pos, f"{prefix}/{model}", base_model, POS_dataset["validation"].select(range(100)), l)
                     hyperparameter_results[l] = accuracy
                 print("hyperparamter search results")
                 print(hyperparameter_results)
                 overall_hyperparameter_results[model][base_model_str] = hyperparameter_results
                 best_lambda = max(hyperparameter_results, key=hyperparameter_results.get)
                 print(best_lambda)
+                pos =  AutoModelForCausalLM.from_pretrained(f"{prefix}/{model_base}/POS_en")
                 with open(f"output/{prefix}/{model_base}/POS.txt", "a") as f:
                     print("language model", model)
-                    accuracy= test_lang_pos_causal(f"{prefix}/{model_base}/POS_en", f"{prefix}/{model}", base_model, POS_dataset["test"], best_lambda)
+                    accuracy= test_lang_pos_causal(pos, f"{prefix}/{model}", base_model, POS_dataset["test"], best_lambda)
                     print(f"accuracy: {accuracy}")  
                     f.write(f"\n======language: {model.split('_')[1]}=======\n")
                     f.write(f"best lambda: {best_lambda}\n")

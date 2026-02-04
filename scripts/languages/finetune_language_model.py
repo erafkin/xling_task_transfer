@@ -102,12 +102,14 @@ def train_language_model(model_checkpoint: str,
         logging_steps=10000,
         gradient_accumulation_steps=2,
         fp16=True,
-        report_to=None,
+        report_to='wandb',
         remove_unused_columns=False,
         dataloader_pin_memory=True,
         load_best_model_at_end=False,
         save_total_limit=2,
-        greater_is_better=False
+        greater_is_better=False,
+        project='xlt'
+
     ) 
     trainer = Trainer(
         model=model,

@@ -193,8 +193,14 @@ def train_DP_model_causal(model_checkpoint, GUM_folder: str = "GUM_en"):
             per_device_eval_batch_size=4,
             push_to_hub=False,
             save_strategy="no",
-            fp16=False,
-            max_length=512
+            warmup_ratio=0.05,
+            lr_scheduler_type="linear",
+            max_grad_norm=1.0,
+            fp16=True,
+            max_length=512,
+            report_to='wandb',
+            project='xlt',
+            run_name="DP_en"
     )
     trainer = SFTTrainer(
         model=model,

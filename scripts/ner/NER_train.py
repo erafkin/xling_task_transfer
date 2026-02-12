@@ -188,14 +188,20 @@ def train_NER_model_causal(model_checkpoint):
             output_dir=f"{output_prefix}/NER_en",
             eval_strategy="epoch",
             learning_rate=2e-5,
-            num_train_epochs=3, 
+            num_train_epochs=10, 
             weight_decay=0.01,
             per_device_train_batch_size=8,
-            per_device_eval_batch_size=8,
+            per_device_eval_batch_size=4,
             push_to_hub=False,
             save_strategy="no",
-            fp16=False,
-            max_length=512
+            warmup_ratio=0.05,
+            lr_scheduler_type="linear",
+            max_grad_norm=1.0,
+            fp16=True,
+            max_length=512,
+            report_to='wandb',
+            project='xlt',
+            run_name="NER_en"
     )
     trainer = SFTTrainer(
         model=model,

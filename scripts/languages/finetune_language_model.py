@@ -25,7 +25,7 @@ def train_language_model(model_checkpoint: str,
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
     def preprocess_function(examples):
         max_length = 512 if "Qwen" in model_checkpoint else 128
-        return tokenizer(examples["text"], padding="max_length", truncation=True, max_length=max_length)
+        return tokenizer(examples["text"], padding="max_length", truncation=True, max_length=128)
     if mlm:
         data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer,mlm=mlm, mlm_probability=mlm_prob)
     else:
@@ -91,7 +91,10 @@ def train_language_model(model_checkpoint: str,
         save_strategy="steps",
         save_steps=100000,
         eval_steps=100000,
-        learning_rate=2e-5,
+        learning_rate=1e-5,
+        warmup_ratio=0.05,
+        lr_scheduler_type="linear",
+        max_grad_norm=1.0,
         per_device_train_batch_size=batch_size,
         max_steps=max_steps,
         num_train_epochs=3,
@@ -108,7 +111,8 @@ def train_language_model(model_checkpoint: str,
         load_best_model_at_end=False,
         save_total_limit=2,
         greater_is_better=False,
-        project='xlt'
+        project='xlt',
+        run_name=language
 
     ) 
     trainer = Trainer(
@@ -124,6 +128,7 @@ def train_language_model(model_checkpoint: str,
 
 if __name__ == "__main__":
     languages = ["en", "hi", "es", "de", "zh", "ru", "fr"]
+    languages = ["fr"]
     mlm = False
     mlm_model_checkpoints = ["google-bert/bert-base-multilingual-cased", "FacebookAI/xlm-roberta-base"]
     model_checkpoints = ["Qwen/Qwen3-0.6B"]  

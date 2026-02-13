@@ -213,7 +213,7 @@ if __name__ == "__main__":
                 ner =  AutoModelForCausalLM.from_pretrained(f"{prefix}/{model_base}/NER_en")
                 for l in test_lambdas:
                     print("lambda: ", l)
-                    accuracy = test_lang_ner_causal(ner, f"{prefix}/{model}", base_model, NER_dataset["validation"].select(range(100)), l)
+                    accuracy = test_lang_ner_causal(ner, f"{prefix}/{model}", base_model, NER_dataset["validation"].select(range(100)), l, uner=model.split("_")[1] == "ru")
                     hyperparameter_results[l] = accuracy
                 print("hyperparamter search results")
                 print(hyperparameter_results)
@@ -223,7 +223,7 @@ if __name__ == "__main__":
                 pneros =  AutoModelForCausalLM.from_pretrained(f"{prefix}/{model_base}/NER_en")
                 with open(f"output/{prefix}/{model_base}/NER.txt", "a") as f:
                     print("language model", model)
-                    accuracy= test_lang_ner_causal(ner, f"{prefix}/{model}", base_model, NER_dataset["train"].select(range(1000)), best_lambda)
+                    accuracy= test_lang_ner_causal(ner, f"{prefix}/{model}", base_model, NER_dataset["train"].select(range(1000)), best_lambda,  uner=model.split("_")[1] == "ru")
                     print(f"accuracy: {accuracy}")  
                     f.write(f"\n======language: {model.split('_')[1]}=======\n")
                     f.write(f"best lambda: {best_lambda}\n")

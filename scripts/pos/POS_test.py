@@ -95,7 +95,7 @@ def test_lang_pos_causal(pos, language_model, pretrained_checkpoint, dataset, be
 
     preds = []
     labels = []
-    model.to(device).eval()
+    pos.to(device).eval()
     with torch.no_grad():
         for data in tqdm(dataset):
             prompt = f"Sentence: {' '.join(data['tokens'])}.\n POS:"
@@ -110,8 +110,8 @@ def test_lang_pos_causal(pos, language_model, pretrained_checkpoint, dataset, be
             preds.append(pred_tags)
             labels.append(data["pos_tags"])
     accuracy = compute_metrics_causal(preds, labels)
-    model.to("cpu")
-    del model
+    pos.to("cpu")
+    del pos
     gc.collect()
     return accuracy
 

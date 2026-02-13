@@ -112,12 +112,28 @@ def test_lang_ner(ner, language_model, pretrained_checkpoint, dataset, best_lamb
     gc.collect()
     return accuracy
 
-def test_lang_ner_causal(ner, language_model, pretrained_checkpoint, dataset, best_lambda:float=1.0, batch_size:int=8):
+def compute_metrics_causal(predictions, labels, uner:bool = False):
+    print("PREDICTIONS: ", predictions[0])
+    print("LABELS: ", labels[0])
+    if uner:
+        preds = [[map_multiconer_labels_to_uner_labels(p1.split("-")[-1]) for p1 in p] for p in predictions]
+    else:
+        preds = predictions
+    # Simple accuracy calculation
+    total = sum(len(pred) for pred in preds)
+    correct = sum(1 for pred, lab in zip(preds, labels) for p, l in zip(pred, lab) if p == l)
+    accuracy = correct / total if total > 0 else 0
+    print("accuracy: ", accuracy)
+    return accuracy
+
+def test_lang_ner_causal(ner, language_model, pretrained_checkpoint, dataset, best_lambda:float=1.0, batch_size:int=8, uner:bool=False):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     tokenizer = AutoTokenizer.from_pretrained(pretrained_checkpoint, trust_remote_code=True, padding_side="left")
     tokenizer.pad_token = tokenizer.eos_token
     lv = get_language_vector_causal(pretrained_checkpoint, language_model)
+
     ner = apply_language_vector_to_model(ner, lv, best_lambda)
+
     preds = []
     labels = []
     ner.to(device).eval()
@@ -132,18 +148,20 @@ def test_lang_ner_causal(ner, language_model, pretrained_checkpoint, dataset, be
             )
             text = tokenizer.decode(output_ids[0], skip_special_tokens=True)
             pred_tags = text.split("NER:")[-1].strip().split()
-            preds += pred_tags
-            labels += data["ner_tags"]
-    accuracy = compute_metrics(preds, labels)
+            preds.append(pred_tags)
+            labels.append(data["ner_tags"])
+    accuracy = compute_metrics_causal(preds, labels, uner)
     ner.to("cpu")
     del ner
     gc.collect()
     return accuracy
 
+
 if __name__ == "__main__":
     test_lambdas = [0.0, 0.1, 0.2, 0.3, 0.4, 0.6, 0.7, 0.8, 0.9, 1.0]
     model_base = "base_finetuned"
-    bert_values = [True, False]
+    base_models = ["bert", "roberta"]
+    base_models = ["qwen"]
     
     datasets = ["English (EN)", "Spanish (ES)", "Hindi (HI)", "German (DE)", "Chinese (ZH)", "French (FR)"]
     id2label, label2id_orig = get_label_mapping()
@@ -158,14 +176,17 @@ if __name__ == "__main__":
     overall_hyperparameter_results = {}
     for idx, model in enumerate(language_models):
         overall_hyperparameter_results[model] = {}
-        for bert in bert_values:
-            overall_hyperparameter_results[model]["bert" if bert else "roberta"] = {}
-            if bert:
+        for base_model_str in base_models:
+            overall_hyperparameter_results[base_model_str] = {}
+            if base_model_str == "bert":
                 base_model = "google-bert/bert-base-multilingual-cased"
                 prefix = "bert-multilingual"
-            else:
+            elif base_model_str == "roberta":
                 base_model = "FacebookAI/xlm-roberta-base"
                 prefix = "xlm-roberta"
+            else:
+                base_model = "Qwen/Qwen3-0.6B"
+                prefix = "qwen"
             # handle data
             if model.split("_")[1] == "ru":
                 # russian NER tags come from a different datasource :(
@@ -187,68 +208,92 @@ if __name__ == "__main__":
                 NER_dataset = load_dataset("MultiCoNER/multiconer_v2", datasets[idx], trust_remote_code=True)
                 label2id=label2id_orig
             tokenizer = AutoTokenizer.from_pretrained(base_model)
-            def tokenize_and_align_labels(examples):
-                # from https://reybahl.medium.com/token-classification-in-python-with-huggingface-3fab73a6a20e
-                tokenized_inputs = tokenizer(examples["tokens"], truncation=True, is_split_into_words=True)
-                labels = []
-                for i, label in enumerate(examples[f"ner_tags"]):
-                    word_ids = tokenized_inputs.word_ids(batch_index=i)  # Map tokens to their respective word.
-                    previous_word_idx = None
-                    label_ids = []
-                    for word_idx in word_ids:  # Set the special tokens to -100.
-                        if word_idx is None:
-                            label_ids.append(-100)
-                        elif word_idx != previous_word_idx:  # Only label the first token of a given word.
-                            # FIX HERE! TODO EMMA
-                            if model.split("_")[1] == "ru":
-                                label_ids.append(label2id[map_multiconer_labels_to_uner_labels(label[word_idx].split("-")[-1])])
-                            else:
-                                label_ids.append(label2id[label[word_idx]])
-                        else:
-                            label_ids.append(-100)
-                        previous_word_idx = word_idx
-                    labels.append(label_ids)
+            if base_model_str == "qwen":
+                hyperparameter_results = {}
+                ner =  AutoModelForCausalLM.from_pretrained(f"{prefix}/{model_base}/NER_en")
+                for l in test_lambdas:
+                    print("lambda: ", l)
+                    accuracy = test_lang_ner_causal(ner, f"{prefix}/{model}", base_model, NER_dataset["validation"].select(range(100)), l)
+                    hyperparameter_results[l] = accuracy
+                print("hyperparamter search results")
+                print(hyperparameter_results)
+                overall_hyperparameter_results[model][base_model_str] = hyperparameter_results
+                best_lambda = max(hyperparameter_results, key=hyperparameter_results.get)
+                print(best_lambda)
+                pneros =  AutoModelForCausalLM.from_pretrained(f"{prefix}/{model_base}/NER_en")
+                with open(f"output/{prefix}/{model_base}/NER.txt", "a") as f:
+                    print("language model", model)
+                    accuracy= test_lang_ner_causal(ner, f"{prefix}/{model}", base_model, NER_dataset["train"].select(range(1000)), best_lambda)
+                    print(f"accuracy: {accuracy}")  
+                    f.write(f"\n======language: {model.split('_')[1]}=======\n")
+                    f.write(f"best lambda: {best_lambda}\n")
+                    f.write(f"accuracy: {accuracy}\n")
+                    f.close()
 
-                tokenized_inputs["labels"] = labels
-                return tokenized_inputs
-            tokenized_dataset= NER_dataset.map(
-                tokenize_and_align_labels,
-                batched=True,
-            )
-
-            mlm_model = AutoModelForMaskedLM.from_pretrained(
-                base_model,
-                dtype=torch.float32,
-            )
-            if bert:
-                encoder = mlm_model.bert
+                
             else:
-                encoder = mlm_model.roberta
-            hyperparameter_results = {}
-            for l in test_lambdas:
-                ner_model = TokenClassificationHead(encoder, num_labels=len(id2label), bert=bert)
-                load_model(ner_model, f"{prefix}/{model_base}/NER_en/model.safetensors", device="cpu")
-                accuracy = test_lang_ner(ner_model, f"{prefix}/{model}", base_model, tokenized_dataset["validation"], l, uner=model.split("_")[1] == "ru")
-                hyperparameter_results[l] = accuracy
-            print("hyperparamter serach results")
-            print(hyperparameter_results)
-            overall_hyperparameter_results[model]["bert" if bert else "roberta"] = hyperparameter_results
+                def tokenize_and_align_labels(examples):
+                    # from https://reybahl.medium.com/token-classification-in-python-with-huggingface-3fab73a6a20e
+                    tokenized_inputs = tokenizer(examples["tokens"], truncation=True, is_split_into_words=True)
+                    labels = []
+                    for i, label in enumerate(examples[f"ner_tags"]):
+                        word_ids = tokenized_inputs.word_ids(batch_index=i)  # Map tokens to their respective word.
+                        previous_word_idx = None
+                        label_ids = []
+                        for word_idx in word_ids:  # Set the special tokens to -100.
+                            if word_idx is None:
+                                label_ids.append(-100)
+                            elif word_idx != previous_word_idx:  # Only label the first token of a given word.
+                                # FIX HERE! TODO EMMA
+                                if model.split("_")[1] == "ru":
+                                    label_ids.append(label2id[map_multiconer_labels_to_uner_labels(label[word_idx].split("-")[-1])])
+                                else:
+                                    label_ids.append(label2id[label[word_idx]])
+                            else:
+                                label_ids.append(-100)
+                            previous_word_idx = word_idx
+                        labels.append(label_ids)
 
-            best_lambda = max(hyperparameter_results, key=hyperparameter_results.get)
-            print(best_lambda)
-            with open(f"output/{prefix}/{model_base}/NER.txt", "a") as f:
-                print("language model", model)
-                ner_model = TokenClassificationHead(encoder, num_labels=len(id2label), bert=bert)
-                load_model(ner_model, f"{prefix}/{model_base}/NER_en/model.safetensors", device="cpu") 
-                accuracy= test_lang_ner(ner_model, f"{prefix}/{model}", base_model, tokenized_dataset["train"], best_lambda, uner=model.split("_")[1] == "ru")
-                print(f"accuracy: {accuracy}")  
-                f.write(f"\n======language: {model.split('_')[1]}=======\n")
-                f.write(f"best lambda: {best_lambda}\n")
-                f.write(f"accuracy: {accuracy}\n")
-                f.close()
-    with open(f"output/NER_pretrained_hyperparameter_search.json", "w") as f:
-        json.dump(overall_hyperparameter_results, f, indent=4)
-        f.close()
+                    tokenized_inputs["labels"] = labels
+                    return tokenized_inputs
+                tokenized_dataset= NER_dataset.map(
+                    tokenize_and_align_labels,
+                    batched=True,
+                )
+
+                mlm_model = AutoModelForMaskedLM.from_pretrained(
+                    base_model,
+                    dtype=torch.float32,
+                )
+                if bert:
+                    encoder = mlm_model.bert
+                else:
+                    encoder = mlm_model.roberta
+                hyperparameter_results = {}
+                for l in test_lambdas:
+                    ner_model = TokenClassificationHead(encoder, num_labels=len(id2label), bert=bert)
+                    load_model(ner_model, f"{prefix}/{model_base}/NER_en/model.safetensors", device="cpu")
+                    accuracy = test_lang_ner(ner_model, f"{prefix}/{model}", base_model, tokenized_dataset["validation"], l, uner=model.split("_")[1] == "ru")
+                    hyperparameter_results[l] = accuracy
+                print("hyperparamter serach results")
+                print(hyperparameter_results)
+                overall_hyperparameter_results[model]["bert" if bert else "roberta"] = hyperparameter_results
+
+                best_lambda = max(hyperparameter_results, key=hyperparameter_results.get)
+                print(best_lambda)
+                with open(f"output/{prefix}/{model_base}/NER.txt", "a") as f:
+                    print("language model", model)
+                    ner_model = TokenClassificationHead(encoder, num_labels=len(id2label), bert=bert)
+                    load_model(ner_model, f"{prefix}/{model_base}/NER_en/model.safetensors", device="cpu") 
+                    accuracy= test_lang_ner(ner_model, f"{prefix}/{model}", base_model, tokenized_dataset["train"], best_lambda, uner=model.split("_")[1] == "ru")
+                    print(f"accuracy: {accuracy}")  
+                    f.write(f"\n======language: {model.split('_')[1]}=======\n")
+                    f.write(f"best lambda: {best_lambda}\n")
+                    f.write(f"accuracy: {accuracy}\n")
+                    f.close()
+        with open(f"output/{base_model_str}/base_finetuned/NER_pretrained_hyperparameter_search_{base_model_str}.json", "w") as f:
+            json.dump(overall_hyperparameter_results, f, indent=4)
+            f.close()
 
 
 

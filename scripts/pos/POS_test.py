@@ -148,8 +148,9 @@ if __name__ == "__main__":
                     "language_fr_done",
                     "language_ru_done"
                     ]
+    overall_hyperparameter_results = {}
     for idx, model in enumerate(language_models):
-        overall_hyperparameter_results = {}
+        overall_hyperparameter_results[model] = {}
         for base_model_str in base_models:
             overall_hyperparameter_results[base_model_str] = {}
             if base_model_str == "bert":

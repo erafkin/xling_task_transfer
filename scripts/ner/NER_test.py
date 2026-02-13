@@ -220,7 +220,7 @@ if __name__ == "__main__":
                 overall_hyperparameter_results[model][base_model_str] = hyperparameter_results
                 best_lambda = max(hyperparameter_results, key=hyperparameter_results.get)
                 print(best_lambda)
-                pneros =  AutoModelForCausalLM.from_pretrained(f"{prefix}/{model_base}/NER_en")
+                ner =  AutoModelForCausalLM.from_pretrained(f"{prefix}/{model_base}/NER_en")
                 with open(f"output/{prefix}/{model_base}/NER.txt", "a") as f:
                     print("language model", model)
                     accuracy= test_lang_ner_causal(ner, f"{prefix}/{model}", base_model, NER_dataset["train"].select(range(1000)), best_lambda,  uner=model.split("_")[1] == "ru")
@@ -265,13 +265,13 @@ if __name__ == "__main__":
                     base_model,
                     dtype=torch.float32,
                 )
-                if bert:
+                if base_model_str == "bert":
                     encoder = mlm_model.bert
                 else:
                     encoder = mlm_model.roberta
                 hyperparameter_results = {}
                 for l in test_lambdas:
-                    ner_model = TokenClassificationHead(encoder, num_labels=len(id2label), bert=bert)
+                    ner_model = TokenClassificationHead(encoder, num_labels=len(id2label), bert=base_model_str)
                     load_model(ner_model, f"{prefix}/{model_base}/NER_en/model.safetensors", device="cpu")
                     accuracy = test_lang_ner(ner_model, f"{prefix}/{model}", base_model, tokenized_dataset["validation"], l, uner=model.split("_")[1] == "ru")
                     hyperparameter_results[l] = accuracy

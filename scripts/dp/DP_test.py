@@ -75,11 +75,13 @@ def compute_metrics_causal(eval_pred):
         correct_rels.append([1 if p == l else 0  for p, l in zip(pred, lab)])
     print(correct_heads)
     print(correct_rels)
-    correct_labels_and_indices = [1 if (h ==1 and r == 1) else 0 for h, r in zip(correct_heads, correct_rels)] 
+    correct_labels_and_indices = []
+    for head, rel in zip(correct_heads, correct_rels):
+        correct_labels_and_indices.append([1 if (h ==1 and r == 1) else 0 for h, r in zip(head, rel)]) 
     print(correct_labels_and_indices)
-    unlabeled_correct = sum(correct_heads)
-    labeled_correct = sum(correct_labels_and_indices)
-    total_words = len(predicted_head)
+    unlabeled_correct = sum([sum(c) for c in correct_heads])
+    labeled_correct = sum([sum(c) for c in correct_labels_and_indices])
+    total_words = sum(len(h) for h in predicted_head)
 
     if total_words > 0.0:
         unlabeled_attachment_score = unlabeled_correct / total_words

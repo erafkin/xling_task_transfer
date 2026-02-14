@@ -48,7 +48,7 @@ def map_multiconer_labels_to_uner_labels(lab: str) -> str:
     if lab in label_map:
         return label_map[lab]
     else:
-        return "OTHER"
+        return "O"
 
 def compute_metrics(predictions, labels, uner:bool = False):
     if uner:
@@ -59,7 +59,7 @@ def compute_metrics(predictions, labels, uner:bool = False):
                     "LOC": 0,
                     "ORG": 1, 
                     "PER": 2, 
-                    "OTHER": 3
+                    "O": 3
                 }
         preds = [[uner_label2id[p1] for p1 in p]for p in preds]
     else:

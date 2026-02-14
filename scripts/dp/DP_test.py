@@ -40,18 +40,18 @@ def compute_metrics(eval_pred):
     
     predicted_head, predicted_arc, head_labels, arc_labels = eval_pred
     print("PREDICTIONS: ")
-    print("HEADS:", predicted_head[0])
-    print("ARCS:", predicted_arc[0])
+    print("HEADS:", predicted_head)
+    print("ARCS:", predicted_arc)
     print("LABELS: ")
-    print("HEADS:", head_labels[0])
-    print("ARCS:", arc_labels[0])
+    print("HEADS:", head_labels)
+    print("ARCS:", arc_labels)
 
-    correct_indices = [1 for pred, lab in zip(predicted_head, head_labels) if pred == lab]
-    correct_labels = [1 for pred, lab in zip(predicted_arc, arc_labels) if pred == lab]
+    correct_indices = [1 if pred == lab else 0 for pred, lab in zip(predicted_head, head_labels)]
+    correct_labels = [1 if pred == lab else 0 for pred, lab in zip(predicted_arc, arc_labels)]
     print(correct_indices)
     print(correct_labels)
-    correct_labels_and_indices = correct_indices * correct_labels
-
+    correct_labels_and_indices = [1 if correct_indicies[i] == 1 and correct_labels[i] == 1 else 0 for i in range(len(predicted_head))]#correct_indices * correct_labels
+    print(correct_labels_and_indices)
     unlabeled_correct = sum(correct_indices)
     labeled_correct = sum(correct_labels_and_indices)
     total_words = len(predicted_head)

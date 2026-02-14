@@ -69,7 +69,7 @@ def compute_metrics_causal(eval_pred):
     print("ARCS:", arc_labels[:2])
     correct_heads = []
     for pred, lab in zip(predicted_head, head_labels):
-        correct_heads.append([1 if p == l else 0  for p, l in zip(pred, lab)])
+        correct_heads.append([1 if p == l else 0 for p, l in zip(pred, lab)])
     correct_rels = []
     for pred, lab in zip(predicted_arc, arc_labels):
         correct_rels.append([1 if p == l else 0  for p, l in zip(pred, lab)])
@@ -156,10 +156,10 @@ def test_lang_dp_causal(dp, language_model, pretrained_checkpoint, dataset, best
             inputs = tokenizer(prompt, return_tensors="pt").to(device)
             output_ids = dp.generate(
                 **inputs,
-                max_new_tokens=128,
+                max_new_tokens=64,
                 do_sample=False
             )
-            text = tokenizer.decode(output_ids[0], skip_special_tokens=True)
+            text = tokenizer.decode(output_ids[0], skip_special_tokens=True).to("cpu")
             output = text.split("DP:")[-1].strip().split()
             label_heads.append(data["dep_head"])
             label_rels.append(data["dep_rel"])

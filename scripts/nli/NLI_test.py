@@ -68,7 +68,7 @@ def test_lang_nli_causal(nli, language_model, pretrained_checkpoint, dataset, be
             inputs = tokenizer(prompt, return_tensors="pt").to(device)
             output_ids = nli.generate(
                 **inputs,
-                max_new_tokens=64,
+                max_new_tokens=10,
                 do_sample=False
             )
             text = tokenizer.decode(output_ids[0], skip_special_tokens=True)

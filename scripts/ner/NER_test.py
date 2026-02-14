@@ -115,14 +115,16 @@ def test_lang_ner(ner, language_model, pretrained_checkpoint, dataset, best_lamb
 def compute_metrics_causal(predictions, labels, uner:bool = False):
     if uner:
         preds = [[map_multiconer_labels_to_uner_labels(p1.split("-")[-1]) for p1 in p] for p in predictions]
+        labs = [[l1.split("-")[-1] for l1 in l] for l in labels]
     else:
         preds = predictions
+        labs = labels
     print("PREDICTIONS: ", preds[0])
     print("LABELS: ", labels[0])
     
     # Simple accuracy calculation
     total = sum(len(pred) for pred in preds)
-    correct = sum(1 for pred, lab in zip(preds, labels) for p, l in zip(pred, lab) if p == l)
+    correct = sum(1 for pred, lab in zip(preds, labs) for p, l in zip(pred, lab) if p == l)
     accuracy = correct / total if total > 0 else 0
     print("accuracy: ", accuracy)
     return accuracy

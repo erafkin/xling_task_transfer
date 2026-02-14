@@ -67,14 +67,17 @@ def compute_metrics_causal(eval_pred):
     print("LABELS: ")
     print("HEADS:", head_labels)
     print("ARCS:", arc_labels)
-
-    correct_indices = [1 if p == l else 0 for pred, lab in zip(predicted_head, head_labels) for p, l in zip(pred, lab)]
-    correct_labels = [1 if p == l else 0 for pred, lab in zip(predicted_arc, arc_labels) for p, l in zip(pred, lab)] 
-    print(correct_indices)
-    print(correct_labels)
-    correct_labels_and_indices = [1 if correct_indices[i] == 1 and correct_labels[i] == 1 else 0 for i in range(len(predicted_head))]#correct_indices * correct_labels
+    correct_heads = []
+    for pred, lab in zip(predicted_head, head_labels):
+        correct_heads.append([1 if p == l else 0  for p, l in zip(pred, lab)])
+    correct_rels = []
+    for pred, lab in zip(predicted_arc, arc_labels):
+        correct_rels.append([1 if p == l else 0  for p, l in zip(pred, lab)])
+    print(correct_heads)
+    print(correct_rels)
+    correct_labels_and_indices = [1 if (correct_heads[i] == 1 and correct_rels[i] == 1) else 0 for i in range(len(predicted_head))]#correct_indices * correct_labels
     print(correct_labels_and_indices)
-    unlabeled_correct = sum(correct_indices)
+    unlabeled_correct = sum(correct_heads)
     labeled_correct = sum(correct_labels_and_indices)
     total_words = len(predicted_head)
 

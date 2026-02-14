@@ -168,13 +168,14 @@ if __name__ == "__main__":
     
     datasets = ["English (EN)", "Spanish (ES)", "Hindi (HI)", "German (DE)", "Chinese (ZH)", "French (FR)"]
     id2label, label2id_orig = get_label_mapping()
-    language_models = ["language_ru_done",
+    language_models = [
                         "language_en_done", 
                         "language_es_done", 
                         "language_hi_done", 
                         "language_de_done", 
                         "language_zh_done",
-                        "language_fr_done"                        
+                        "language_fr_done",
+                        "language_ru_done",                     
                     ]
     overall_hyperparameter_results = {}
     for idx, model in enumerate(language_models):
@@ -212,11 +213,14 @@ if __name__ == "__main__":
                 label2id=label2id_orig
             tokenizer = AutoTokenizer.from_pretrained(base_model)
             if base_model_str == "qwen":
+                val_data = NER_dataset["validation"] if model.split("_")[1] == "ru" else NER_dataset["validation"].select(range(100))
+                test_data = NER_dataset["train"] if model.split("_")[1] == "ru" else NER_dataset["train"].select(range(1000))
+
                 hyperparameter_results = {}
                 ner =  AutoModelForCausalLM.from_pretrained(f"{prefix}/{model_base}/NER_en")
                 for l in test_lambdas:
                     print("lambda: ", l)
-                    accuracy = test_lang_ner_causal(ner, f"{prefix}/{model}", base_model, NER_dataset["validation"].select(range(100)), l, uner=model.split("_")[1] == "ru")
+                    accuracy = test_lang_ner_causal(ner, f"{prefix}/{model}", base_model, val_data, l, uner=model.split("_")[1] == "ru")
                     hyperparameter_results[l] = accuracy
                 print("hyperparamter search results")
                 print(hyperparameter_results)
@@ -226,7 +230,7 @@ if __name__ == "__main__":
                 ner =  AutoModelForCausalLM.from_pretrained(f"{prefix}/{model_base}/NER_en")
                 with open(f"output/{prefix}/{model_base}/NER.txt", "a") as f:
                     print("language model", model)
-                    accuracy= test_lang_ner_causal(ner, f"{prefix}/{model}", base_model, NER_dataset["train"].select(range(1000)), best_lambda,  uner=model.split("_")[1] == "ru")
+                    accuracy= test_lang_ner_causal(ner, f"{prefix}/{model}", base_model, test_data, best_lambda,  uner=model.split("_")[1] == "ru")
                     print(f"accuracy: {accuracy}")  
                     f.write(f"\n======language: {model.split('_')[1]}=======\n")
                     f.write(f"best lambda: {best_lambda}\n")

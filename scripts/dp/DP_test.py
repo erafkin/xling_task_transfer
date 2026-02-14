@@ -46,17 +46,13 @@ def compute_metrics(eval_pred):
     print("HEADS:", head_labels[0])
     print("ARCS:", arc_labels[0])
 
-    predicted_head = torch.Tensor(predicted_head)
-    predicted_arc = torch.Tensor(predicted_arc)
-    head_labels = torch.Tensor(head_labels)
-    arc_labels = torch.Tensor(arc_labels)
-    correct_indices = predicted_head.eq(head_labels)
-    correct_labels = predicted_arc.eq(arc_labels)
+    correct_indices = [1 for pred, lab in zip(predicted_head, head_labels) if pred == lab]
+    correct_labels = [1 for pred, lab in zip(predicted_arc, arc_labels) if pred == lab]
     correct_labels_and_indices = correct_indices * correct_labels
 
-    unlabeled_correct = correct_indices.sum().item()
-    labeled_correct = correct_labels_and_indices.sum().item()
-    total_words = correct_indices.numel()
+    unlabeled_correct = sum(correct_indices)
+    labeled_correct = sum(correct_labels_and_indices)
+    total_words = len(predicted_head)
 
     if total_words > 0.0:
         unlabeled_attachment_score = unlabeled_correct / total_words

@@ -86,6 +86,10 @@ def compute_metrics_causal(eval_pred):
     if total_words > 0.0:
         unlabeled_attachment_score = unlabeled_correct / total_words
         labeled_attachment_score = labeled_correct / total_words
+    print({
+        "uas": unlabeled_attachment_score * 100,
+        "las": labeled_attachment_score * 100,
+    })
     return {
         "uas": unlabeled_attachment_score * 100,
         "las": labeled_attachment_score * 100,
@@ -159,7 +163,7 @@ def test_lang_dp_causal(dp, language_model, pretrained_checkpoint, dataset, best
                 max_new_tokens=64,
                 do_sample=False
             )
-            text = tokenizer.decode(output_ids[0], skip_special_tokens=True).to("cpu")
+            text = tokenizer.decode(output_ids[0], skip_special_tokens=True)
             output = text.split("DP:")[-1].strip().split()
             label_heads.append(data["dep_head"])
             label_rels.append(data["dep_rel"])
@@ -235,7 +239,7 @@ if __name__ == "__main__":
                 dp =  AutoModelForCausalLM.from_pretrained(f"{prefix}/{model_base}/DP_en")
                 for l in test_lambdas:
                     print("lambda: ", l)
-                    accuracy = test_lang_dp_causal(dp, f"{prefix}/{model}", base_model, DP_dataset["validation"].select(range(5)), l)
+                    accuracy = test_lang_dp_causal(dp, f"{prefix}/{model}", base_model, DP_dataset["validation"].select(range(100)), l)
                     hyperparameter_results[l] = accuracy
                 print("hyperparamter search results")
                 print(hyperparameter_results)

@@ -37,7 +37,29 @@ def get_label_mapping():
 def compute_metrics(eval_pred):
     # adapted from https://github.com/cambridgeltl/composable-sft/blob/main/examples/dependency-parsing/dp/utils_udp.py#L87
     
-    
+    predicted_head, predicted_arc, head_labels, arc_labels = eval_pred
+    predicted_head = torch.Tensor(predicted_head)
+    predicted_arc = torch.Tensor(predicted_arc)
+    head_labels = torch.Tensor(head_labels)
+    arc_labels = torch.Tensor(arc_labels)
+    correct_indices = predicted_head.eq(head_labels)
+    correct_labels = predicted_arc.eq(arc_labels)
+    correct_labels_and_indices = correct_indices * correct_labels
+
+    unlabeled_correct = correct_indices.sum().item()
+    labeled_correct = correct_labels_and_indices.sum().item()
+    total_words = correct_indices.numel()
+
+    if total_words > 0.0:
+        unlabeled_attachment_score = unlabeled_correct / total_words
+        labeled_attachment_score = labeled_correct / total_words
+    return {
+        "uas": unlabeled_attachment_score * 100,
+        "las": labeled_attachment_score * 100,
+    }
+
+
+def compute_metrics_causal(eval_pred):    
     predicted_head, predicted_arc, head_labels, arc_labels = eval_pred
     print("PREDICTIONS: ")
     print("HEADS:", predicted_head)
@@ -46,11 +68,11 @@ def compute_metrics(eval_pred):
     print("HEADS:", head_labels)
     print("ARCS:", arc_labels)
 
-    correct_indices = [1 if pred == lab else 0 for pred, lab in zip(predicted_head, head_labels)]
-    correct_labels = [1 if pred == lab else 0 for pred, lab in zip(predicted_arc, arc_labels)]
+    correct_indices = [1 if p == l else 0 for pred, lab in zip(predicted_head, head_labels) for p, l in zip(pred, lab)]
+    correct_labels = [1 if p == l else 0 for pred, lab in zip(predicted_arc, arc_labels) for p, l in zip(pred, lab)] 
     print(correct_indices)
     print(correct_labels)
-    correct_labels_and_indices = [1 if correct_indicies[i] == 1 and correct_labels[i] == 1 else 0 for i in range(len(predicted_head))]#correct_indices * correct_labels
+    correct_labels_and_indices = [1 if correct_indices[i] == 1 and correct_labels[i] == 1 else 0 for i in range(len(predicted_head))]#correct_indices * correct_labels
     print(correct_labels_and_indices)
     unlabeled_correct = sum(correct_indices)
     labeled_correct = sum(correct_labels_and_indices)
@@ -142,7 +164,7 @@ def test_lang_dp_causal(dp, language_model, pretrained_checkpoint, dataset, best
             pred_heads.append(p_heads)
             pred_rels.append(p_rels)
 
-    results = compute_metrics((pred_heads, pred_rels, label_heads, label_rels))
+    results = compute_metrics_causal((pred_heads, pred_rels, label_heads, label_rels))
     dp.to("cpu")
     del dp
     gc.collect()

@@ -120,9 +120,6 @@ def test_lang_dp_causal(dp, language_model, pretrained_checkpoint, dataset, best
     lv = get_language_vector_causal(pretrained_checkpoint, language_model)
 
     dp = apply_language_vector_to_model(dp, lv, best_lambda)
-
-    preds = []
-    labels = []
     dp.to(device).eval()
     pred_heads = []
     pred_rels = []
@@ -141,9 +138,8 @@ def test_lang_dp_causal(dp, language_model, pretrained_checkpoint, dataset, best
             output = text.split("DP:")[-1].strip().split()
             label_heads.append(data["dep_head"])
             label_rels.append(data["dep_rel"])
-            print(output)
             p_heads = [p.split(":")[0] for p in output]
-            p_rels = [p.split(":")[1] for p in output]
+            p_rels = [p.split(":")[1] if len(p.split(":")) > 1 else "ERR" for p in output]
 
             pred_heads.append(p_heads)
             pred_rels.append(p_rels)

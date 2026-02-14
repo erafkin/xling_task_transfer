@@ -62,7 +62,7 @@ def compute_metrics(eval_pred):
 def compute_metrics_causal(eval_pred):    
     predicted_head, predicted_arc, head_labels, arc_labels = eval_pred
     print("PREDICTIONS: ")
-    print("HEADS:", predicted_head[:2])
+    print("HEADS:", predicted_head[:])
     print("ARCS:", predicted_arc[:2])
     print("LABELS: ")
     print("HEADS:", head_labels[:2])
@@ -73,12 +73,9 @@ def compute_metrics_causal(eval_pred):
     correct_rels = []
     for pred, lab in zip(predicted_arc, arc_labels):
         correct_rels.append([1 if p == l else 0  for p, l in zip(pred, lab)])
-    print(correct_heads)
-    print(correct_rels)
     correct_labels_and_indices = []
     for head, rel in zip(correct_heads, correct_rels):
         correct_labels_and_indices.append([1 if (h ==1 and r == 1) else 0 for h, r in zip(head, rel)]) 
-    print(correct_labels_and_indices)
     unlabeled_correct = sum([sum(c) for c in correct_heads])
     labeled_correct = sum([sum(c) for c in correct_labels_and_indices])
     total_words = sum(len(h) for h in predicted_head)

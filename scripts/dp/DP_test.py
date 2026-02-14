@@ -48,6 +48,8 @@ def compute_metrics(eval_pred):
 
     correct_indices = [1 for pred, lab in zip(predicted_head, head_labels) if pred == lab]
     correct_labels = [1 for pred, lab in zip(predicted_arc, arc_labels) if pred == lab]
+    print(correct_indices)
+    print(correct_labels)
     correct_labels_and_indices = correct_indices * correct_labels
 
     unlabeled_correct = sum(correct_indices)
@@ -206,7 +208,7 @@ if __name__ == "__main__":
                 dp =  AutoModelForCausalLM.from_pretrained(f"{prefix}/{model_base}/DP_en")
                 for l in test_lambdas:
                     print("lambda: ", l)
-                    accuracy = test_lang_dp_causal(dp, f"{prefix}/{model}", base_model, DP_dataset["validation"].select(range(100)), l)
+                    accuracy = test_lang_dp_causal(dp, f"{prefix}/{model}", base_model, DP_dataset["validation"].select(range(5)), l)
                     hyperparameter_results[l] = accuracy
                 print("hyperparamter search results")
                 print(hyperparameter_results)

@@ -120,7 +120,7 @@ def compute_metrics_causal(predictions, labels, uner:bool = False):
         preds = predictions
         labs = labels
     print("PREDICTIONS: ", preds[0])
-    print("LABELS: ", labels[0])
+    print("LABELS: ", labs[0])
     
     # Simple accuracy calculation
     total = sum(len(pred) for pred in preds)

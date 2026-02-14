@@ -124,7 +124,7 @@ if __name__ == "__main__":
                 nli =  AutoModelForCausalLM.from_pretrained(f"{prefix}/{model_base}/NLI_en")
                 for l in test_lambdas:
                     print("lambda: ", l)
-                    accuracy = test_lang_nli_causal(nli, f"{prefix}/{model}", base_model, NLI_dataset["validation"], l)
+                    accuracy = test_lang_nli_causal(nli, f"{prefix}/{model}", base_model, NLI_dataset["validation"].select(range(100)), l)
                     hyperparameter_results[l] = accuracy
                 print("hyperparamter search results")
                 print(hyperparameter_results)

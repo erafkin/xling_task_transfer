@@ -241,7 +241,7 @@ if __name__ == "__main__":
                 print("hyperparamter search results")
                 print(hyperparameter_results)
                 overall_hyperparameter_results[model][base_model_str] = hyperparameter_results
-                best_lambda = max(hyperparameter_results, key=hyperparameter_results.get)
+                best_lambda = max(hyperparameter_results, key=lambda k: hyperparameter_results[k]["uas"])
                 print(best_lambda)
                 dp =  AutoModelForCausalLM.from_pretrained(f"{prefix}/{model_base}/DP_en")
                 with open(f"output/{prefix}/{model_base}/DP.txt", "a") as f:

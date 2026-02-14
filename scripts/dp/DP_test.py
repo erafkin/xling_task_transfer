@@ -62,11 +62,11 @@ def compute_metrics(eval_pred):
 def compute_metrics_causal(eval_pred):    
     predicted_head, predicted_arc, head_labels, arc_labels = eval_pred
     print("PREDICTIONS: ")
-    print("HEADS:", predicted_head)
-    print("ARCS:", predicted_arc)
+    print("HEADS:", predicted_head[:2])
+    print("ARCS:", predicted_arc[:2])
     print("LABELS: ")
-    print("HEADS:", head_labels)
-    print("ARCS:", arc_labels)
+    print("HEADS:", head_labels[:2])
+    print("ARCS:", arc_labels[:2])
     correct_heads = []
     for pred, lab in zip(predicted_head, head_labels):
         correct_heads.append([1 if p == l else 0  for p, l in zip(pred, lab)])
@@ -75,7 +75,7 @@ def compute_metrics_causal(eval_pred):
         correct_rels.append([1 if p == l else 0  for p, l in zip(pred, lab)])
     print(correct_heads)
     print(correct_rels)
-    correct_labels_and_indices = [1 if (correct_heads[i] == 1 and correct_rels[i] == 1) else 0 for i in range(len(predicted_head))]#correct_indices * correct_labels
+    correct_labels_and_indices = [1 if (h ==1 and r == 1) else 0 for h, r in zip(correct_heads, correct_rels)] 
     print(correct_labels_and_indices)
     unlabeled_correct = sum(correct_heads)
     labeled_correct = sum(correct_labels_and_indices)
@@ -154,7 +154,7 @@ def test_lang_dp_causal(dp, language_model, pretrained_checkpoint, dataset, best
             inputs = tokenizer(prompt, return_tensors="pt").to(device)
             output_ids = dp.generate(
                 **inputs,
-                max_new_tokens=64,
+                max_new_tokens=128,
                 do_sample=False
             )
             text = tokenizer.decode(output_ids[0], skip_special_tokens=True)

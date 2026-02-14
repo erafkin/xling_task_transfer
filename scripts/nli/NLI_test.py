@@ -78,8 +78,9 @@ def test_lang_nli_causal(nli, language_model, pretrained_checkpoint, dataset, be
     print("PREDICTIONS: ", preds[:5])
     print("LABELS: ", labels[:5])
     total = len(preds)
-    correct = sum(1 for pred, lab in zip(preds,labels) if pred == lab)
+    correct = sum(1 for pred, lab in zip(preds,labels) if pred == str(lab))
     accuracy = correct / total if total > 0 else 0
+    print("accuracy: ", accuracy)
     nli.to("cpu")
     del nli
     gc.collect()

@@ -113,12 +113,13 @@ def test_lang_ner(ner, language_model, pretrained_checkpoint, dataset, best_lamb
     return accuracy
 
 def compute_metrics_causal(predictions, labels, uner:bool = False):
-    print("PREDICTIONS: ", predictions[0])
-    print("LABELS: ", labels[0])
     if uner:
         preds = [[map_multiconer_labels_to_uner_labels(p1.split("-")[-1]) for p1 in p] for p in predictions]
     else:
         preds = predictions
+    print("PREDICTIONS: ", preds[0])
+    print("LABELS: ", labels[0])
+    
     # Simple accuracy calculation
     total = sum(len(pred) for pred in preds)
     correct = sum(1 for pred, lab in zip(preds, labels) for p, l in zip(pred, lab) if p == l)
@@ -165,13 +166,13 @@ if __name__ == "__main__":
     
     datasets = ["English (EN)", "Spanish (ES)", "Hindi (HI)", "German (DE)", "Chinese (ZH)", "French (FR)"]
     id2label, label2id_orig = get_label_mapping()
-    language_models = ["language_en_done", 
+    language_models = ["language_ru_done",
+                        "language_en_done", 
                         "language_es_done", 
                         "language_hi_done", 
                         "language_de_done", 
                         "language_zh_done",
-                        "language_fr_done",
-                        "language_ru_done"
+                        "language_fr_done"                        
                     ]
     overall_hyperparameter_results = {}
     for idx, model in enumerate(language_models):
@@ -277,13 +278,13 @@ if __name__ == "__main__":
                     hyperparameter_results[l] = accuracy
                 print("hyperparamter serach results")
                 print(hyperparameter_results)
-                overall_hyperparameter_results[model]["bert" if bert else "roberta"] = hyperparameter_results
+                overall_hyperparameter_results[model]["bert" if base_model_str == "bert" else "roberta"] = hyperparameter_results
 
                 best_lambda = max(hyperparameter_results, key=hyperparameter_results.get)
                 print(best_lambda)
                 with open(f"output/{prefix}/{model_base}/NER.txt", "a") as f:
                     print("language model", model)
-                    ner_model = TokenClassificationHead(encoder, num_labels=len(id2label), bert=bert)
+                    ner_model = TokenClassificationHead(encoder, num_labels=len(id2label), bert=base_model_str == "bert")
                     load_model(ner_model, f"{prefix}/{model_base}/NER_en/model.safetensors", device="cpu") 
                     accuracy= test_lang_ner(ner_model, f"{prefix}/{model}", base_model, tokenized_dataset["train"], best_lambda, uner=model.split("_")[1] == "ru")
                     print(f"accuracy: {accuracy}")  

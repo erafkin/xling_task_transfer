@@ -87,10 +87,9 @@ def test_lang_nli_causal(nli, language_model, pretrained_checkpoint, dataset, be
     return accuracy
 
 if __name__ == "__main__":
-    test_lambdas = [0.0, 0.1, 0.2, 0.3, 0.4, 0.6, 0.7, 0.8, 0.9, 1.0]
+    test_lambdas = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     model_base = "base_finetuned"
-    base_models = ["bert", "roberta"]
-    base_models = ["qwen"]    
+    base_models = ["bert", "roberta", "qwen"]
     datasets = ["en", "es", "hi", "de", "zh", "fr","ru"]
     language_models = ["language_en_done", 
                     "language_es_done", 

@@ -166,10 +166,9 @@ def test_lang_ner_causal(ner, language_model, pretrained_checkpoint, dataset, be
 
 
 if __name__ == "__main__":
-    test_lambdas = [0.0, 0.1, 0.2, 0.3, 0.4, 0.6, 0.7, 0.8, 0.9, 1.0]
+    test_lambdas = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     model_base = "base_finetuned"
-    base_models = ["bert", "roberta"]
-    base_models = ["qwen"]
+    base_models = ["bert", "roberta", "qwen"]
     
     datasets = ["English (EN)", "Spanish (ES)", "Hindi (HI)", "German (DE)", "Chinese (ZH)", "French (FR)"]
     id2label, label2id_orig = get_label_mapping()

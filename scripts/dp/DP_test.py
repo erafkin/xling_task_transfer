@@ -177,10 +177,9 @@ def test_lang_dp_causal(dp, language_model, pretrained_checkpoint, dataset, best
     return results
 
 if __name__ == "__main__":
-    test_lambdas = [0.0, 0.1, 0.2, 0.3, 0.4, 0.6, 0.7, 0.8, 0.9, 1.0]
+    test_lambdas = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     model_base = "base_finetuned"
-    base_models = ["bert", "roberta"]
-    base_models = ["qwen"]
+    base_models = ["bert", "roberta", "qwen"]
     id2label, label2id = get_label_mapping()
     val_datasets = [
         "GUM_en/en_gum-ud-dev.conllu", 

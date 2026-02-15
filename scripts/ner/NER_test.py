@@ -43,12 +43,13 @@ def map_multiconer_labels_to_uner_labels(lab: str) -> str:
         "Politician": "PER",
         "Cleric": "PER",
         "SportsManager": "PER",
-        "OtherPER": "PER"
+        "OtherPER": "PER", 
+        "O": "O"
     }
     if lab in label_map:
         return label_map[lab]
     else:
-        return "O"
+        return lab
 
 def compute_metrics(predictions, labels, uner:bool = False):
     if uner:
@@ -251,7 +252,6 @@ if __name__ == "__main__":
                             if word_idx is None:
                                 label_ids.append(-100)
                             elif word_idx != previous_word_idx:  # Only label the first token of a given word.
-                                # FIX HERE! TODO EMMA
                                 if model.split("_")[1] == "ru":
                                     label_ids.append(label2id[map_multiconer_labels_to_uner_labels(label[word_idx].split("-")[-1])])
                                 else:

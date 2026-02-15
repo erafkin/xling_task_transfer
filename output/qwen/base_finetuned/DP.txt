@@ -1,0 +1,28 @@
+
+======language: en=======
+best lambda: 0.2
+accuracy: {'uas': 54.857571214392806, 'las': 46.904047976011995}
+
+======language: es=======
+best lambda: 0.2
+accuracy: {'uas': 34.28465254552211, 'las': 24.236343366778147}
+
+======language: hi=======
+best lambda: 0.1
+accuracy: {'uas': 12.73073542338119, 'las': 1.970407266334603}
+
+======language: de=======
+best lambda: 0.1
+accuracy: {'uas': 22.03079737764903, 'las': 12.692483610306448}
+
+======language: zh=======
+best lambda: 0.1
+accuracy: {'uas': 15.113871635610765, 'las': 4.443951493640935}
+
+======language: fr=======
+best lambda: 0.3
+accuracy: {'uas': 34.82387838338895, 'las': 23.945124212087503}
+
+======language: ru=======
+best lambda: 0.1
+accuracy: {'uas': 26.22324159021407, 'las': 15.848623853211008}

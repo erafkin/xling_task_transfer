@@ -44,7 +44,11 @@ def map_multiconer_labels_to_uner_labels(lab: str) -> str:
         "Cleric": "PER",
         "SportsManager": "PER",
         "OtherPER": "PER", 
-        "O": "O"
+        "VisualWork": "O", 
+        "MusicalWork": "O",
+        "WrittenWork": "O",
+        "ArtWork": "O",
+        "Software": "O"
     }
     if lab in label_map:
         return label_map[lab]

@@ -281,13 +281,13 @@ if __name__ == "__main__":
                     encoder = mlm_model.roberta
                 hyperparameter_results = {}
                 for l in test_lambdas:
-                    ner_model = TokenClassificationHead(encoder, num_labels=len(id2label), bert=base_model_str)
+                    ner_model = TokenClassificationHead(encoder, num_labels=len(id2label), bert=base_model_str == "bert")
                     load_model(ner_model, f"{prefix}/{model_base}/NER_en/model.safetensors", device="cpu")
                     accuracy = test_lang_ner(ner_model, f"{prefix}/{model}", base_model, tokenized_dataset["validation"], l, uner=model.split("_")[1] == "ru")
                     hyperparameter_results[l] = accuracy
                 print("hyperparamter serach results")
                 print(hyperparameter_results)
-                overall_hyperparameter_results[model]["bert" if base_model_str == "bert" else "roberta"] = hyperparameter_results
+                overall_hyperparameter_results[model][base_model_str] = hyperparameter_results
 
                 best_lambda = max(hyperparameter_results, key=hyperparameter_results.get)
                 print(best_lambda)
@@ -301,9 +301,9 @@ if __name__ == "__main__":
                     f.write(f"best lambda: {best_lambda}\n")
                     f.write(f"accuracy: {accuracy}\n")
                     f.close()
-        with open(f"output/{base_model_str}/base_finetuned/NER_pretrained_hyperparameter_search_{base_model_str}.json", "w") as f:
-            json.dump(overall_hyperparameter_results, f, indent=4)
-            f.close()
+    with open(f"output/NER_pretrained_hyperparameter_search.json", "w") as f:
+        json.dump(overall_hyperparameter_results, f, indent=4)
+        f.close()
 
 
 

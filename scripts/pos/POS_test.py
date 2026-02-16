@@ -251,9 +251,9 @@ if __name__ == "__main__":
                     f.write(f"best lambda: {best_lambda}\n")
                     f.write(f"accuracy: {accuracy}\n")
                     f.close()
-        with open(f"output/{base_model_str}/base_finetuned/POS_pretrained_hyperparameter_search_{base_model_str}.json", "w") as f:
-            json.dump(overall_hyperparameter_results, f, indent=4)
-            f.close()
+    with open(f"output/POS_pretrained_hyperparameter_search.json", "w") as f:
+        json.dump(overall_hyperparameter_results, f, indent=4)
+        f.close()
 
 
 

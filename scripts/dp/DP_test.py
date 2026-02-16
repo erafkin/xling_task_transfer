@@ -53,6 +53,9 @@ def compute_metrics(eval_pred):
     if total_words > 0.0:
         unlabeled_attachment_score = unlabeled_correct / total_words
         labeled_attachment_score = labeled_correct / total_words
+    else:
+        unlabeled_attachment_score = 0.0
+        labeled_attachment_score = 0.0
     return {
         "uas": unlabeled_attachment_score * 100,
         "las": labeled_attachment_score * 100,
@@ -83,6 +86,9 @@ def compute_metrics_causal(eval_pred):
     if total_words > 0.0:
         unlabeled_attachment_score = unlabeled_correct / total_words
         labeled_attachment_score = labeled_correct / total_words
+    else:
+        unlabeled_attachment_score = 0.0
+        labeled_attachment_score = 0.0
     print({
         "uas": unlabeled_attachment_score * 100,
         "las": labeled_attachment_score * 100,

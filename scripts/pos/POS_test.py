@@ -183,9 +183,11 @@ if __name__ == "__main__":
                 print("hyperparamter search results")
                 print(hyperparameter_results)
                 overall_hyperparameter_results[model][base_model_str] = hyperparameter_results
-                if model.split("_")[1] == "en":
-                    best_lambda = 0.0
+                
                 best_lambda = max(hyperparameter_results, key=hyperparameter_results.get)
+                if model.split("_")[1] == "en":
+                    print("lang en, best lambda 0")
+                    best_lambda = 0.0
                 print(best_lambda)
                 pos =  AutoModelForCausalLM.from_pretrained(f"{prefix}/{model_base}/POS_en")
                 with open(f"output/{prefix}/{model_base}/POS.txt", "a") as f:
@@ -243,6 +245,7 @@ if __name__ == "__main__":
                 overall_hyperparameter_results[model][base_model_str] = hyperparameter_results
                 best_lambda = max(hyperparameter_results, key=hyperparameter_results.get)
                 if model.split("_")[1] == "en":
+                    print("lang en, best lambda 0")
                     best_lambda = 0.0
                 print(best_lambda)
                 with open(f"output/{prefix}/{model_base}/POS.txt", "a") as f:

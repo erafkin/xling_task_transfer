@@ -229,6 +229,8 @@ if __name__ == "__main__":
                 print("hyperparamter search results")
                 print(hyperparameter_results)
                 overall_hyperparameter_results[model][base_model_str] = hyperparameter_results
+                if model.split("_")[1] == "en":
+                    best_lambda = 0.0
                 best_lambda = max(hyperparameter_results, key=hyperparameter_results.get)
                 print(best_lambda)
                 ner =  AutoModelForCausalLM.from_pretrained(f"{prefix}/{model_base}/NER_en")
@@ -289,6 +291,8 @@ if __name__ == "__main__":
                 print(hyperparameter_results)
                 overall_hyperparameter_results[model][base_model_str] = hyperparameter_results
 
+                if model.split("_")[1] == "en":
+                    best_lambda = 0.0
                 best_lambda = max(hyperparameter_results, key=hyperparameter_results.get)
                 print(best_lambda)
                 with open(f"output/{prefix}/{model_base}/NER.txt", "a") as f:

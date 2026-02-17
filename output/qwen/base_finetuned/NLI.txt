@@ -1,7 +1,7 @@
 
 ======language: en=======
-best lambda: 0.1
-accuracy: 0.8604790419161676
+best lambda: 0.0
+accuracy: 0.8610778443113772
 
 ======language: es=======
 best lambda: 0.2

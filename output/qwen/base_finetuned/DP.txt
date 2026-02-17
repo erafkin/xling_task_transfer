@@ -1,7 +1,7 @@
 
 ======language: en=======
-best lambda: 0.2
-accuracy: {'uas': 54.857571214392806, 'las': 46.904047976011995}
+best lambda: 0.0
+accuracy: {'uas': 54.92472473971986, 'las': 47.127555988315486}
 
 ======language: es=======
 best lambda: 0.2

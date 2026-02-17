@@ -24,7 +24,7 @@ def apply_language_vector_to_model(ner_model_checkpoint: str, language_vector:Ta
     ner_model = language_vector.apply_to(ner_model_checkpoint, scaling_coef=lambda_coef)
     return ner_model
 
-def map_multiconer_labels_to_uner_labels(lab: str) -> str:
+def map_multiconer_labels_to_uner_labels(lab: str, qwen:bool = False) -> str:
     label_map = {
         "Facility": "LOC", 
         "OtherLOC": "LOC",
@@ -53,7 +53,10 @@ def map_multiconer_labels_to_uner_labels(lab: str) -> str:
     if lab in label_map:
         return label_map[lab]
     else:
-        return lab
+        if qwen:
+            return lab
+        else:
+            return "O"
 
 def compute_metrics(predictions, labels, uner:bool = False):
     if uner:
@@ -119,7 +122,7 @@ def test_lang_ner(ner, language_model, pretrained_checkpoint, dataset, best_lamb
 
 def compute_metrics_causal(predictions, labels, uner:bool = False):
     if uner:
-        preds = [[map_multiconer_labels_to_uner_labels(p1.split("-")[-1]) for p1 in p] for p in predictions]
+        preds = [[map_multiconer_labels_to_uner_labels(p1.split("-")[-1], qwen=True) for p1 in p] for p in predictions]
         labs = [[l1.split("-")[-1] for l1 in l] for l in labels]
     else:
         preds = predictions
@@ -209,7 +212,7 @@ if __name__ == "__main__":
                     "LOC": 0,
                     "ORG": 1, 
                     "PER": 2, 
-                    "OTHER": 3
+                    "O": 3
                 }
             else:
 

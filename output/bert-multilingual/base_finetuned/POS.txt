@@ -12,12 +12,12 @@ best lambda: 1.0
 accuracy: 0.694196147551303
 
 ======language: de=======
-best lambda: 0.6
-accuracy: 0.8729169551770299
+best lambda: 0.5
+accuracy: 0.8734708950745511
 
 ======language: zh=======
-best lambda: 0.6
-accuracy: 0.6960074713985525
+best lambda: 0.5
+accuracy: 0.6967079150128415
 
 ======language: fr=======
 best lambda: 1.0

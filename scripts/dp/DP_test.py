@@ -64,12 +64,12 @@ def compute_metrics(eval_pred):
 
 def compute_metrics_causal(eval_pred):    
     predicted_head, predicted_arc, head_labels, arc_labels = eval_pred
-    print("PREDICTIONS: ")
-    print("HEADS:", predicted_head[:])
-    print("ARCS:", predicted_arc[:2])
-    print("LABELS: ")
-    print("HEADS:", head_labels[:2])
-    print("ARCS:", arc_labels[:2])
+    #print("PREDICTIONS: ")
+    #print("HEADS:", predicted_head[:])
+    #print("ARCS:", predicted_arc[:2])
+    #print("LABELS: ")
+    #print("HEADS:", head_labels[:2])
+    #print("ARCS:", arc_labels[:2])
     correct_heads = []
     for pred, lab in zip(predicted_head, head_labels):
         correct_heads.append([1 if p == l else 0 for p, l in zip(pred, lab)])

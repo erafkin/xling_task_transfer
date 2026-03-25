@@ -5,12 +5,10 @@ from transformers import (
     DataCollatorForLanguageModeling,
     TrainingArguments, 
     Trainer,
-    BitsAndBytesConfig
 )
 import torch
-from datasets import load_dataset, Dataset
+from datasets import load_dataset
 from tqdm import tqdm
-from peft import LoraConfig, get_peft_model,  prepare_model_for_kbit_training
 
 import os
 
@@ -56,30 +54,13 @@ def train_language_model(model_checkpoint: str,
             device_map="auto"
         )     
     else:
-        #PEFT
-        # lora_config = LoraConfig(
-        #     r=32,
-        #     lora_alpha=64,
-        #     lora_dropout=0.05,
-        #     bias="none",
-        #     target_modules=["q_proj","v_proj"],
-        # )   
-        # # quantize    
-        # bnb_config = BitsAndBytesConfig(
-        #     load_in_4bit=True,
-        #     bnb_4bit_use_double_quant=True,
-        #     bnb_4bit_quant_type="nf4",
-        #     bnb_4bit_compute_dtype=torch.float16
-        # )
+       
         model = AutoModelForCausalLM.from_pretrained(
             model_checkpoint,
             dtype=torch.float32,
             # quantization_config=bnb_config,
             device_map="auto"
         )
-        # model = prepare_model_for_kbit_training(model)
-        # model = get_peft_model(model, lora_config)
-        # model.print_trainable_parameters()
         
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
@@ -127,26 +108,26 @@ def train_language_model(model_checkpoint: str,
 
 if __name__ == "__main__":
     languages = ["en", "hi", "es", "de", "zh", "ru", "fr"]
-    mlm_model_checkpoints = ["google-bert/bert-base-multilingual-cased", "FacebookAI/xlm-roberta-base"]
-    model_checkpoints = ["Qwen/Qwen3-0.6B"] 
+    # mlm_model_checkpoints = ["google-bert/bert-base-multilingual-cased", "FacebookAI/xlm-roberta-base"]
+    # model_checkpoints = ["Qwen/Qwen3-0.6B"] 
     model_checkpoints = ["ibm-granite/granite-4.0-350m-base"] 
-    batch_size = 8 # need to lower batch size for qwen.
-    if mlm:
-        batch_size = 32
-        model_checkpoints = mlm_model_checkpoints
     for i, checkpoint in enumerate(model_checkpoints):
         if "bert-base" in checkpoint:
             output_dir = "bert-multilingual"
             mlm = True
+            batch_size = 32
         elif "roberta-base" in checkpoint:
             output_dir = "xlm-roberta"
             mlm = True
+            batch_size = 32
         elif "Qwen" in checkpoint:
             output_dir = "qwen"
             mlm = False
+            batch_size = 8
         elif "granite" in checkpoint:
             output_dir = "granite"
             mlm = False
+            batch_size = 32
         else:
             raise Exception(f"{checkpoint} not allowed")
         for language in tqdm(languages):

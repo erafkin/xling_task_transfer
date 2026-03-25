@@ -24,7 +24,6 @@ def train_language_model(model_checkpoint: str,
     
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
     def preprocess_function(examples):
-        max_length = 512 if "Qwen" in model_checkpoint else 128
         return tokenizer(examples["text"], padding="max_length", truncation=True, max_length=128)
     if mlm:
         data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer,mlm=mlm, mlm_probability=mlm_prob)
@@ -128,10 +127,9 @@ def train_language_model(model_checkpoint: str,
 
 if __name__ == "__main__":
     languages = ["en", "hi", "es", "de", "zh", "ru", "fr"]
-    languages = ["fr"]
-    mlm = False
     mlm_model_checkpoints = ["google-bert/bert-base-multilingual-cased", "FacebookAI/xlm-roberta-base"]
-    model_checkpoints = ["Qwen/Qwen3-0.6B"]  
+    model_checkpoints = ["Qwen/Qwen3-0.6B"] 
+    model_checkpoints = ["ibm-granite/granite-4.0-350m-base"] 
     batch_size = 8 # need to lower batch size for qwen.
     if mlm:
         batch_size = 32
@@ -139,10 +137,16 @@ if __name__ == "__main__":
     for i, checkpoint in enumerate(model_checkpoints):
         if "bert-base" in checkpoint:
             output_dir = "bert-multilingual"
+            mlm = True
         elif "roberta-base" in checkpoint:
             output_dir = "xlm-roberta"
+            mlm = True
         elif "Qwen" in checkpoint:
             output_dir = "qwen"
+            mlm = False
+        elif "granite" in checkpoint:
+            output_dir = "granite"
+            mlm = False
         else:
             raise Exception(f"{checkpoint} not allowed")
         for language in tqdm(languages):

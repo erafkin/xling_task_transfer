@@ -26,17 +26,15 @@ def train_language_model(model_checkpoint: str,
     def preprocess_function(examples):
         tokenized = tokenizer(
             examples["text"],
-            padding="max_length",
-            truncation=True,
-            max_length=128
-        )
+            padding=False,
+            truncation=True        )
         if not mlm:
             tokenized["labels"] = tokenized["input_ids"].copy()
         return tokenized
     if mlm:
         data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer,mlm=mlm, mlm_probability=mlm_prob)
     else:
-        data_collator = default_data_collator
+        data_collator = DataCollatorForLanguageModeling( tokenizer=tokenizer, mlm=False)
 
     if num_samples > 0:
         lang_dataset = load_dataset("wikimedia/wikipedia", f"20231101.{language}", streaming=True, split="train", cache_dir="/home/scratch/epr41")

@@ -31,11 +31,7 @@ def train_language_model(model_checkpoint: str,
             truncation=True,
             max_length=128
         )
-        labels = [
-            [(tok if tok != tokenizer.pad_token_id else -100) for tok in seq]
-            for seq in tokenized["input_ids"]
-        ]
-        tokenized["labels"] = labels
+        tokenized["labels"] = tokenized["input_ids"].copy()
         return tokenized
     if mlm:
         data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer,mlm=mlm, mlm_probability=mlm_prob)
@@ -48,7 +44,7 @@ def train_language_model(model_checkpoint: str,
         lang_dataset = lang_dataset.map(
                 preprocess_function,
                 batched=True,
-                remove_columns=lang_dataset.column_names
+                remove_columns=["text"]
             )
         max_steps = (num_samples + batch_size - 1) // batch_size
     else:

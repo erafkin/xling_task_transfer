@@ -26,16 +26,35 @@ def train_language_model(model_checkpoint: str,
     def preprocess_function(examples):
         tokenized = tokenizer(
             examples["text"],
+            truncation=True,
             padding=False,
-            truncation=True        )
+            max_length=128
+        )
         if not mlm:
             tokenized["labels"] = tokenized["input_ids"].copy()
         return tokenized
+    def group_texts(examples):
+        #no padding -- smush it together if there are texts shorter than 128
+        block_size = 128
+        keys = ["input_ids", "attention_mask"]
+        concatenated = {k: sum(examples[k], []) for k in keys}
+        total_length = len(concatenated["input_ids"])
+
+        # drop remainder
+        total_length = (total_length // block_size) * block_size
+
+        result = {
+            k: [t[i:i + block_size] for i in range(0, total_length, block_size)]
+            for k, t in concatenated.items()
+        }
+
+        result["labels"] = result["input_ids"].copy()
+        return result
     if mlm:
         data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer,mlm=mlm, mlm_probability=mlm_prob)
     else:
-        data_collator = DataCollatorForLanguageModeling( tokenizer=tokenizer, mlm=False)
-
+        #data_collator = DataCollatorForLanguageModeling( tokenizer=tokenizer, mlm=False)
+        data_collator = default_data_collator
     if num_samples > 0:
         lang_dataset = load_dataset("wikimedia/wikipedia", f"20231101.{language}", streaming=True, split="train", cache_dir="/home/scratch/epr41")
         lang_dataset = lang_dataset.take(num_samples)
@@ -44,17 +63,12 @@ def train_language_model(model_checkpoint: str,
                 batched=True,
                 remove_columns=["text"]
             )
-        max_steps = (num_samples + batch_size - 1) // batch_size
-    else:
-        lang_dataset = load_dataset("wikimedia/wikipedia", f"20231101.{language}",split="train")
         lang_dataset = lang_dataset.map(
-                preprocess_function,
-                batched=True,
-                remove_columns=lang_dataset.column_names,
-                num_proc=4
-            )
-        max_steps = -1
-      
+            group_texts,
+            batched=True
+        )
+        max_steps = (num_samples + batch_size - 1) // batch_size
+    
     if mlm:
         model = AutoModelForMaskedLM.from_pretrained(
             model_checkpoint,
@@ -136,10 +150,10 @@ if __name__ == "__main__":
         elif "granite" in checkpoint:
             output_dir = "granite"
             mlm = False
-            batch_size = 16
+            batch_size = 32
         else:
             raise Exception(f"{checkpoint} not allowed")
         for language in tqdm(languages):
             if not os.path.exists(f"{output_dir}/language_{language}_done"):
-                train_language_model(model_checkpoint=checkpoint, language=language, mlm=mlm, output_dir=output_dir,num_samples=1000000, batch_size=batch_size)
+                train_language_model(model_checkpoint=checkpoint, language=language, mlm=mlm, output_dir=output_dir,num_samples=2000000, batch_size=batch_size)
            

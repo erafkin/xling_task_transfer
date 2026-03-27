@@ -13,9 +13,12 @@
 module load cuda/12.5
 
 module load gcc/11.4.0
- 
+export PYTHONPATH=/home/epr41/xling_task_transfer
+export WANDB_PROJECT="xlt" 
 python3.11 -m venv venv
 source venv/bin/activate
+
 pip3 install -r requirements.txt
+
 python3.11 --version
 python3.11 ./scripts/languages/finetune_language_model.py

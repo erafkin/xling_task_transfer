@@ -22,8 +22,7 @@ def train_language_model(model_checkpoint: str,
                          batch_size:int = 32):
     
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
-    def preprocess_function(examples):
-        return tokenizer(examples["text"], padding="max_length", truncation=True, max_length=128)
+    
     def preprocess_function(examples):
         tokenized = tokenizer(
             examples["text"],
@@ -31,7 +30,8 @@ def train_language_model(model_checkpoint: str,
             truncation=True,
             max_length=128
         )
-        tokenized["labels"] = tokenized["input_ids"].copy()
+        if not mlm:
+            tokenized["labels"] = tokenized["input_ids"].copy()
         return tokenized
     if mlm:
         data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer,mlm=mlm, mlm_probability=mlm_prob)

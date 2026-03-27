@@ -5,6 +5,7 @@ from transformers import (
     DataCollatorForLanguageModeling,
     TrainingArguments, 
     Trainer,
+    default_data_collator
 )
 import torch
 from datasets import load_dataset
@@ -23,10 +24,23 @@ def train_language_model(model_checkpoint: str,
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
     def preprocess_function(examples):
         return tokenizer(examples["text"], padding="max_length", truncation=True, max_length=128)
+    def preprocess_function(examples):
+        tokenized = tokenizer(
+            examples["text"],
+            padding="max_length",
+            truncation=True,
+            max_length=128
+        )
+        labels = [
+            [(tok if tok != tokenizer.pad_token_id else -100) for tok in seq]
+            for seq in tokenized["input_ids"]
+        ]
+        tokenized["labels"] = labels
+        return tokenized
     if mlm:
         data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer,mlm=mlm, mlm_probability=mlm_prob)
     else:
-        data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=mlm)
+        data_collator = default_data_collator
 
     if num_samples > 0:
         lang_dataset = load_dataset("wikimedia/wikipedia", f"20231101.{language}", streaming=True, split="train", cache_dir="/home/scratch/epr41")
@@ -82,7 +96,7 @@ def train_language_model(model_checkpoint: str,
         optim="adamw_torch",
         weight_decay=0.01,
         push_to_hub=False,
-        logging_steps=10000,
+        logging_steps=1000,
         gradient_accumulation_steps=2,
         fp16=True,
         report_to='wandb',
@@ -108,9 +122,10 @@ def train_language_model(model_checkpoint: str,
 
 if __name__ == "__main__":
     languages = ["en", "hi", "es", "de", "zh", "ru", "fr"]
+    languages = ["en", "hi", "es"]
     # mlm_model_checkpoints = ["google-bert/bert-base-multilingual-cased", "FacebookAI/xlm-roberta-base"]
     # model_checkpoints = ["Qwen/Qwen3-0.6B"] 
-    model_checkpoints = ["ibm-granite/granite-4.0-350m-base"] 
+    model_checkpoints = ["ibm-granite/granite-4.0-350m"] 
     for i, checkpoint in enumerate(model_checkpoints):
         if "bert-base" in checkpoint:
             output_dir = "bert-multilingual"
@@ -127,10 +142,10 @@ if __name__ == "__main__":
         elif "granite" in checkpoint:
             output_dir = "granite"
             mlm = False
-            batch_size = 32
+            batch_size = 16
         else:
             raise Exception(f"{checkpoint} not allowed")
         for language in tqdm(languages):
             if not os.path.exists(f"{output_dir}/language_{language}_done"):
-                train_language_model(model_checkpoint=checkpoint, language=language, mlm=mlm, output_dir=output_dir,num_samples=2000000, batch_size=batch_size)
+                train_language_model(model_checkpoint=checkpoint, language=language, mlm=mlm, output_dir=output_dir,num_samples=1000000, batch_size=batch_size)
            

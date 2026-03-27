@@ -27,33 +27,24 @@ def train_language_model(model_checkpoint: str,
         tokenized = tokenizer(
             examples["text"],
             truncation=True,
-            padding=False,
+            padding="max_length",
             max_length=128
         )
         if not mlm:
-            tokenized["labels"] = tokenized["input_ids"].copy()
+            labels = []
+        
+            for ids in tokenized["input_ids"]:
+                labels.append([
+                    token if token != tokenizer.pad_token_id else -100
+                    for token in ids
+                ])
+
+            tokenized["labels"] = labels
         return tokenized
-    def group_texts(examples):
-        #no padding -- smush it together if there are texts shorter than 128
-        block_size = 128
-        keys = ["input_ids", "attention_mask"]
-        concatenated = {k: sum(examples[k], []) for k in keys}
-        total_length = len(concatenated["input_ids"])
-
-        # drop remainder
-        total_length = (total_length // block_size) * block_size
-
-        result = {
-            k: [t[i:i + block_size] for i in range(0, total_length, block_size)]
-            for k, t in concatenated.items()
-        }
-
-        result["labels"] = result["input_ids"].copy()
-        return result
     if mlm:
         data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer,mlm=mlm, mlm_probability=mlm_prob)
     else:
-        #data_collator = DataCollatorForLanguageModeling( tokenizer=tokenizer, mlm=False)
+        #data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
         data_collator = default_data_collator
     if num_samples > 0:
         lang_dataset = load_dataset("wikimedia/wikipedia", f"20231101.{language}", streaming=True, split="train", cache_dir="/home/scratch/epr41")
@@ -63,10 +54,7 @@ def train_language_model(model_checkpoint: str,
                 batched=True,
                 remove_columns=["text"]
             )
-        lang_dataset = lang_dataset.map(
-            group_texts,
-            batched=True
-        )
+        
         max_steps = (num_samples + batch_size - 1) // batch_size
     
     if mlm:

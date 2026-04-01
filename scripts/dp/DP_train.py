@@ -3,7 +3,6 @@ from torch import nn
 import numpy as np
 from transformers import AutoTokenizer, AutoConfig, AutoModelForMaskedLM, Trainer, TrainingArguments, AutoModelForCausalLM, BitsAndBytesConfig
 from datasets import Dataset, DatasetDict
-from peft import LoraConfig, get_peft_model,  prepare_model_for_kbit_training
 
 from scripts.dp.dp_model import TransformerForBiaffineParsing, DataCollatorForDependencyParsing
 from scripts.task_utils import load_conllu_data
@@ -11,6 +10,7 @@ from scripts.task_utils import load_conllu_data
 from seqeval.metrics import f1_score
 import re
 from trl import SFTTrainer, SFTConfig
+import wandb
 
 UD_HEAD_LABELS = [
     "_",
@@ -181,7 +181,10 @@ def train_DP_model_causal(model_checkpoint, GUM_folder: str = "GUM_en"):
         )
     train_dataset = Dataset.from_list(train_data)
     validation_dataset = Dataset.from_list(validation_data)
-    output_prefix = "qwen/base_finetuned"
+    if "granite" in model_checkpoint:
+        output_prefix = "granite/base_finetuned"
+    else:
+        output_prefix = "qwen/base_finetuned"
 
     training_args = SFTConfig(
             output_dir=f"{output_prefix}/DP_en",
@@ -196,12 +199,14 @@ def train_DP_model_causal(model_checkpoint, GUM_folder: str = "GUM_en"):
             warmup_ratio=0.05,
             lr_scheduler_type="linear",
             max_grad_norm=1.0,
-            fp16=True,
+            bf16=True,
             max_length=512,
             report_to='wandb',
             project='xlt',
             run_name="DP_en"
     )
+    if "granite" in model_checkpoint:
+        model.config.use_cache = False
     trainer = SFTTrainer(
         model=model,
         args=training_args,
@@ -212,11 +217,14 @@ def train_DP_model_causal(model_checkpoint, GUM_folder: str = "GUM_en"):
     
     trainer.train()
     trainer.save_model(f"{output_prefix}/DP_en")
+    wandb.finish()
 
 if __name__ == "__main__":
     roberta = "FacebookAI/xlm-roberta-base"
     bert = "google-bert/bert-base-multilingual-cased"
     qwen = "Qwen/Qwen3-0.6B"
-    train_DP_model_causal(qwen)
+    granite = "ibm-granite/granite-4.0-350m"
+
+    train_DP_model_causal(granite)
 
 

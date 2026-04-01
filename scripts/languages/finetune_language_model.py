@@ -10,7 +10,7 @@ from transformers import (
 import torch
 from datasets import load_dataset
 from tqdm import tqdm
-
+import wandb
 import os
 
 def train_language_model(model_checkpoint: str, 
@@ -22,7 +22,9 @@ def train_language_model(model_checkpoint: str,
                          batch_size:int = 32):
     
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
-    
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+        model.config.pad_token_id = tokenizer.eos_token_id 
     def preprocess_function(examples):
         tokenized = tokenizer(
             examples["text"],
@@ -31,28 +33,20 @@ def train_language_model(model_checkpoint: str,
             max_length=128
         )
         if not mlm:
-            labels = []
-        
-            for ids in tokenized["input_ids"]:
-                labels.append([
-                    token if token != tokenizer.pad_token_id else -100
-                    for token in ids
-                ])
-
-            tokenized["labels"] = labels
+            tokenized["labels"] = tokenized["input_ids"].copy()
         return tokenized
     if mlm:
         data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer,mlm=mlm, mlm_probability=mlm_prob)
     else:
-        #data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
-        data_collator = default_data_collator
+        data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False, pad_to_multiple_of=8)
+        #data_collator = default_data_collator
     if num_samples > 0:
         lang_dataset = load_dataset("wikimedia/wikipedia", f"20231101.{language}", streaming=True, split="train", cache_dir="/home/scratch/epr41")
         lang_dataset = lang_dataset.take(num_samples)
         lang_dataset = lang_dataset.map(
                 preprocess_function,
                 batched=True,
-                remove_columns=["text"]
+                remove_columns=["text", "title", "url", "id"]
             )
         
         max_steps = (num_samples + batch_size - 1) // batch_size
@@ -75,6 +69,8 @@ def train_language_model(model_checkpoint: str,
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
             model.config.pad_token_id = tokenizer.eos_token_id
+    if "granite" in model_checkpoint:
+        model.config.use_cache = False
     training_args = TrainingArguments(
         output_dir=f"{output_dir}/language_{language}",
         eval_strategy="no",
@@ -82,9 +78,9 @@ def train_language_model(model_checkpoint: str,
         save_steps=100000,
         eval_steps=100000,
         learning_rate=1e-5,
-        warmup_ratio=0.05,
-        lr_scheduler_type="linear",
-        max_grad_norm=1.0,
+        warmup_ratio=0.01,
+        lr_scheduler_type="cosine",
+        max_grad_norm=0.5,
         per_device_train_batch_size=batch_size,
         max_steps=max_steps,
         num_train_epochs=3,
@@ -92,9 +88,9 @@ def train_language_model(model_checkpoint: str,
         optim="adamw_torch",
         weight_decay=0.01,
         push_to_hub=False,
-        logging_steps=1000,
+        logging_steps=500,
         gradient_accumulation_steps=2,
-        fp16=True,
+        bf16=True,
         report_to='wandb',
         remove_unused_columns=False,
         dataloader_pin_memory=True,
@@ -115,10 +111,13 @@ def train_language_model(model_checkpoint: str,
     
     trainer.train()
     trainer.save_model(f"{output_dir}/language_{language}_done")
-
+    wandb.finish()
 if __name__ == "__main__":
-    languages = ["en", "hi", "es", "de", "zh", "ru", "fr"]
-    languages = ["en", "hi", "es"]
+    #languages = ["en", "hi", "es", "de", "zh", "ru", "fr"]
+    #languages = ["de", "zh"]
+    #languages = ["en", "hi", "es"]
+    #languages = ["ru", "fr"]
+    languages = ["es"]
     # mlm_model_checkpoints = ["google-bert/bert-base-multilingual-cased", "FacebookAI/xlm-roberta-base"]
     # model_checkpoints = ["Qwen/Qwen3-0.6B"] 
     model_checkpoints = ["ibm-granite/granite-4.0-350m"] 

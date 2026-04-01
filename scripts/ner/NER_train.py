@@ -6,12 +6,11 @@ from transformers import (
     AutoConfig,
     Trainer,
     AutoModelForCausalLM,
-    BitsAndBytesConfig
 )
 from seqeval.metrics import f1_score
 import re
 from trl import SFTTrainer, SFTConfig
-from peft import LoraConfig, get_peft_model,  prepare_model_for_kbit_training
+import wandb
 
 import torch
 from datasets import load_dataset, Dataset
@@ -182,7 +181,10 @@ def train_NER_model_causal(model_checkpoint):
         )
     train_dataset = Dataset.from_list(train_data)
     validation_dataset = Dataset.from_list(validation_data)
-    output_prefix = "qwen/base_finetuned"
+    if "granite" in model_checkpoint:
+        output_prefix = "granite/base_finetuned"
+    else:
+        output_prefix = "qwen/base_finetuned"
 
     training_args = SFTConfig(
             output_dir=f"{output_prefix}/NER_en",
@@ -203,6 +205,8 @@ def train_NER_model_causal(model_checkpoint):
             project='xlt',
             run_name="NER_en"
     )
+    if "granite" in model_checkpoint:
+        model.config.use_cache = False
     trainer = SFTTrainer(
         model=model,
         args=training_args,
@@ -213,6 +217,7 @@ def train_NER_model_causal(model_checkpoint):
     
     trainer.train()
     trainer.save_model(f"{output_prefix}/NER_en")
+    wandb.finish()
 
 
 
@@ -220,4 +225,5 @@ if __name__ == "__main__":
     roberta = "FacebookAI/xlm-roberta-base"
     bert = "google-bert/bert-base-multilingual-cased"
     qwen = "Qwen/Qwen3-0.6B"
-    train_NER_model_causal(qwen)
+    granite = "ibm-granite/granite-4.0-350m"
+    train_NER_model_causal(granite)

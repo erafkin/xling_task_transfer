@@ -5,9 +5,8 @@ from transformers import (
     DataCollatorForTokenClassification,
     TrainingArguments, 
     AutoConfig,
-    Trainer,
-    BitsAndBytesConfig
-)
+    Trainer
+    )
 import torch
 from datasets import DatasetDict, Dataset
 import numpy as np
@@ -16,8 +15,7 @@ from torch import nn
 from seqeval.metrics import f1_score
 import re
 from trl import SFTTrainer, SFTConfig
-from peft import LoraConfig, get_peft_model,  prepare_model_for_kbit_training
-
+import wandb
 
 
 from scripts.task_utils import load_conllu_data, TokenClassificationHead
@@ -188,7 +186,10 @@ def train_POS_model_causal(model_checkpoint, GUM_folder: str = "GUM_en"):
         )
     train_dataset = Dataset.from_list(train_data)
     validation_dataset = Dataset.from_list(validation_data)
-    output_prefix = "qwen/base_finetuned"
+    if "granite" in model_checkpoint:
+        output_prefix = "granite/base_finetuned"
+    else:
+        output_prefix = "qwen/base_finetuned"
 
     training_args = SFTConfig(
             output_dir=f"{output_prefix}/POS_en",
@@ -209,6 +210,8 @@ def train_POS_model_causal(model_checkpoint, GUM_folder: str = "GUM_en"):
             project='xlt',
             run_name="POS_en"
     )
+    if "granite" in model_checkpoint:
+        model.config.use_cache = False
     trainer = SFTTrainer(
         model=model,
         args=training_args,
@@ -219,9 +222,10 @@ def train_POS_model_causal(model_checkpoint, GUM_folder: str = "GUM_en"):
     
     trainer.train()
     trainer.save_model(f"{output_prefix}/POS_en")
-
+    wandb.finish()
 if __name__ == "__main__":
     roberta = "FacebookAI/xlm-roberta-base"
     bert = "google-bert/bert-base-multilingual-cased"
     qwen = "Qwen/Qwen3-0.6B"
-    train_POS_model_causal(qwen)
+    granite = "ibm-granite/granite-4.0-350m"
+    train_POS_model_causal(granite)

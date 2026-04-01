@@ -8,6 +8,7 @@ evaluate
 trl
 seqeval
 peft
+wandb
 # scikit-learn
 # matplotlib
 # urielplus

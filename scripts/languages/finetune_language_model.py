@@ -4,8 +4,7 @@ from transformers import (
     AutoTokenizer, 
     DataCollatorForLanguageModeling,
     TrainingArguments, 
-    Trainer,
-    default_data_collator
+    Trainer
 )
 import torch
 from datasets import load_dataset

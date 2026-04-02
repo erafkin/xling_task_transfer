@@ -240,7 +240,7 @@ if __name__ == "__main__":
                 "test": test_dataset
             })
             tokenizer = AutoTokenizer.from_pretrained(base_model)
-            if base_model_str == "qwen":
+            if base_model_str == "qwen" or base_model_str == "granite":
                 hyperparameter_results = {}
                 dp =  AutoModelForCausalLM.from_pretrained(f"{prefix}/{model_base}/DP_en")
                 if base_model_str == "granite":

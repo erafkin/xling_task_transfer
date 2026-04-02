@@ -177,7 +177,7 @@ if __name__ == "__main__":
             })
 
             tokenizer = AutoTokenizer.from_pretrained(base_model)
-            if base_model_str == "qwen":
+            if base_model_str == "qwen" or base_model_str == "granite":
                 hyperparameter_results = {}
                 pos =  AutoModelForCausalLM.from_pretrained(f"{prefix}/{model_base}/POS_en")
                 if base_model_str == "granite":

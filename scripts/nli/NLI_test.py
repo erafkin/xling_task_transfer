@@ -89,7 +89,8 @@ def test_lang_nli_causal(nli, language_model, pretrained_checkpoint, dataset, be
 if __name__ == "__main__":
     test_lambdas = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     model_base = "base_finetuned"
-    base_models = ["bert", "roberta", "qwen"]
+    base_models = ["bert", "roberta", "qwen", "granite"]
+    base_models = ["granite"]
     datasets = ["en", "es", "hi", "de", "zh", "fr","ru"]
     language_models = ["language_en_done", 
                     "language_es_done", 
@@ -111,6 +112,9 @@ if __name__ == "__main__":
             elif base_model_str == "roberta":
                 base_model = "FacebookAI/xlm-roberta-base"
                 prefix = "xlm-roberta"
+            elif base_model_str == "granite":
+                base_model = "ibm-granite/granite-4.0-350m"
+                prefix = "granite"
             else:
                 base_model = "Qwen/Qwen3-0.6B"
                 prefix = "qwen"
@@ -121,6 +125,8 @@ if __name__ == "__main__":
             if base_model_str == "qwen":
                 hyperparameter_results = {}
                 nli =  AutoModelForCausalLM.from_pretrained(f"{prefix}/{model_base}/NLI_en")
+                if base_model_str == "granite":
+                    model.config.use_cache = False
                 for l in test_lambdas:
                     print("lambda: ", l)
                     accuracy = test_lang_nli_causal(nli, f"{prefix}/{model}", base_model, NLI_dataset["validation"].select(range(1000)), l)

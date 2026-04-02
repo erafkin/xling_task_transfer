@@ -171,7 +171,8 @@ def test_lang_ner_causal(ner, language_model, pretrained_checkpoint, dataset, be
 if __name__ == "__main__":
     test_lambdas = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     model_base = "base_finetuned"
-    base_models = ["bert", "roberta", "qwen"]
+    base_models = ["bert", "roberta", "qwen", "granite"]
+    base_models = ["granite"]
     
     datasets = ["English (EN)", "Spanish (ES)", "Hindi (HI)", "German (DE)", "Chinese (ZH)", "French (FR)"]
     id2label, label2id_orig = get_label_mapping()
@@ -195,6 +196,9 @@ if __name__ == "__main__":
             elif base_model_str == "roberta":
                 base_model = "FacebookAI/xlm-roberta-base"
                 prefix = "xlm-roberta"
+            elif base_model_str == "granite":
+                base_model = "ibm-granite/granite-4.0-350m"
+                prefix = "granite"
             else:
                 base_model = "Qwen/Qwen3-0.6B"
                 prefix = "qwen"
@@ -219,12 +223,14 @@ if __name__ == "__main__":
                 NER_dataset = load_dataset("MultiCoNER/multiconer_v2", datasets[idx], trust_remote_code=True)
                 label2id=label2id_orig
             tokenizer = AutoTokenizer.from_pretrained(base_model)
-            if base_model_str == "qwen":
+            if base_model_str == "qwen" or base_model_str == "granite":
                 val_data = NER_dataset["validation"] if model.split("_")[1] == "ru" else NER_dataset["validation"].select(range(100))
                 test_data = NER_dataset["train"] if model.split("_")[1] == "ru" else NER_dataset["train"].select(range(1000))
 
                 hyperparameter_results = {}
                 ner =  AutoModelForCausalLM.from_pretrained(f"{prefix}/{model_base}/NER_en")
+                if base_model_str == "granite":
+                    model.config.use_cache = False
                 for l in test_lambdas:
                     print("lambda: ", l)
                     accuracy = test_lang_ner_causal(ner, f"{prefix}/{model}", base_model, val_data, l, uner=model.split("_")[1] == "ru")

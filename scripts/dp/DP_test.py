@@ -185,7 +185,8 @@ def test_lang_dp_causal(dp, language_model, pretrained_checkpoint, dataset, best
 if __name__ == "__main__":
     test_lambdas = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     model_base = "base_finetuned"
-    base_models = ["bert", "roberta", "qwen"]
+    base_models = ["bert", "roberta", "qwen", "granite"]
+    base_models = ["granite"]
     id2label, label2id = get_label_mapping()
     val_datasets = [
         "GUM_en/en_gum-ud-dev.conllu", 
@@ -223,6 +224,9 @@ if __name__ == "__main__":
             elif base_model_str == "roberta":
                 base_model = "FacebookAI/xlm-roberta-base"
                 prefix = "xlm-roberta"
+            elif base_model_str == "granite":
+                base_model = "ibm-granite/granite-4.0-350m"
+                prefix = "granite"
             else:
                 base_model = "Qwen/Qwen3-0.6B"
                 prefix = "qwen"
@@ -239,6 +243,8 @@ if __name__ == "__main__":
             if base_model_str == "qwen":
                 hyperparameter_results = {}
                 dp =  AutoModelForCausalLM.from_pretrained(f"{prefix}/{model_base}/DP_en")
+                if base_model_str == "granite":
+                    model.config.use_cache = False
                 for l in test_lambdas:
                     print("lambda: ", l)
                     accuracy = test_lang_dp_causal(dp, f"{prefix}/{model}", base_model, DP_dataset["validation"].select(range(100)), l)

@@ -230,7 +230,7 @@ if __name__ == "__main__":
                 hyperparameter_results = {}
                 ner =  AutoModelForCausalLM.from_pretrained(f"{prefix}/{model_base}/NER_en")
                 if base_model_str == "granite":
-                    model.config.use_cache = False
+                    ner.config.use_cache = False
                 for l in test_lambdas:
                     print("lambda: ", l)
                     accuracy = test_lang_ner_causal(ner, f"{prefix}/{model}", base_model, val_data, l, uner=model.split("_")[1] == "ru")

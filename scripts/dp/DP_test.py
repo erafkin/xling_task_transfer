@@ -244,7 +244,7 @@ if __name__ == "__main__":
                 hyperparameter_results = {}
                 dp =  AutoModelForCausalLM.from_pretrained(f"{prefix}/{model_base}/DP_en")
                 if base_model_str == "granite":
-                    model.config.use_cache = False
+                    dp.config.use_cache = False
                 for l in test_lambdas:
                     print("lambda: ", l)
                     accuracy = test_lang_dp_causal(dp, f"{prefix}/{model}", base_model, DP_dataset["validation"].select(range(100)), l)

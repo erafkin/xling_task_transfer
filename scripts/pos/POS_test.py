@@ -181,7 +181,7 @@ if __name__ == "__main__":
                 hyperparameter_results = {}
                 pos =  AutoModelForCausalLM.from_pretrained(f"{prefix}/{model_base}/POS_en")
                 if base_model_str == "granite":
-                    model.config.use_cache = False
+                    pos.config.use_cache = False
                 for l in test_lambdas:
                     print("lambda: ", l)
                     accuracy = test_lang_pos_causal(pos, f"{prefix}/{model}", base_model, POS_dataset["validation"].select(range(100)), l)

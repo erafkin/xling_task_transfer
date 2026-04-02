@@ -126,7 +126,7 @@ if __name__ == "__main__":
                 hyperparameter_results = {}
                 nli =  AutoModelForCausalLM.from_pretrained(f"{prefix}/{model_base}/NLI_en")
                 if base_model_str == "granite":
-                    model.config.use_cache = False
+                    nli.config.use_cache = False
                 for l in test_lambdas:
                     print("lambda: ", l)
                     accuracy = test_lang_nli_causal(nli, f"{prefix}/{model}", base_model, NLI_dataset["validation"].select(range(1000)), l)

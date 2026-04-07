@@ -1,0 +1,28 @@
+
+======language: en=======
+best lambda: 0.0
+accuracy: 0.8417165668662675
+
+======language: es=======
+best lambda: 0.1
+accuracy: 0.7315369261477046
+
+======language: hi=======
+best lambda: 0.1
+accuracy: 0.563872255489022
+
+======language: de=======
+best lambda: 0.2
+accuracy: 0.7033932135728543
+
+======language: zh=======
+best lambda: 0.1
+accuracy: 0.6902195608782435
+
+======language: fr=======
+best lambda: 0.0
+accuracy: 0.742315369261477
+
+======language: ru=======
+best lambda: 0.1
+accuracy: 0.655688622754491

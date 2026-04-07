@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name="ner"
+#SBATCH --job-name="ner_test"
 #SBATCH --nodes=1
 #SBATCH --partition=base
 #SBATCH --output="%x.o%j"

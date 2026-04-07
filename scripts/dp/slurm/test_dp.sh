@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name="test_dp"
+#SBATCH --job-name="dp_test"
 #SBATCH --nodes=1
 #SBATCH --partition=base
 #SBATCH --output="%x.o%j"

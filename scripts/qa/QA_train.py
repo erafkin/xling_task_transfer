@@ -17,7 +17,7 @@ import wandb
 def train_QA_model(model_checkpoint):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, local_files_only=True)
+    tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
     data_collator = DefaultDataCollator()
     # TODO train test split to get train, validation set, SET A SEED
     # We will test on XQuAD which comes from the validation set of SQuAD. Therefore, we run training and validation on the 

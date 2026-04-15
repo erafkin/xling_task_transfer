@@ -22,7 +22,8 @@ def train_QA_model(model_checkpoint):
     # TODO train test split to get train, validation set, SET A SEED
     # We will test on XQuAD which comes from the validation set of SQuAD. Therefore, we run training and validation on the 
     # train set only of SQuAD to avoid data bleed.
-    QA_dataset = load_dataset("rajpurkar/squad", "train", trust_remote_code=True)
+    QA_dataset = load_dataset("rajpurkar/squad", trust_remote_code=True)
+    QA_dataset = QA_dataset["train"]
     QA_dataset.train_test_split(test_size=0.1, seed=42)
 
 
@@ -86,7 +87,6 @@ def train_QA_model(model_checkpoint):
     model = AutoModelForQuestionAnswering.from_pretrained(
         model_checkpoint,
         dtype=torch.float32,
-        local_files_only=True,
     ).to(device)
 
     output_prefix = "xlm-roberta/base_finetuned" if "roberta" in model_checkpoint else "bert-multilingual/base_finetuned"
@@ -133,10 +133,10 @@ def train_QA_model_causal(model_checkpoint):
         tokenizer.pad_token = tokenizer.eos_token
         model.config.pad_token_id = tokenizer.eos_token_id
    
-    QA_dataset = load_dataset("rajpurkar/squad", "train", trust_remote_code=True)
+    QA_dataset = load_dataset("rajpurkar/squad",trust_remote_code=True)
+    QA_dataset = QA_dataset["train"]
     QA_dataset.train_test_split(test_size=0.1, seed=42)   
     train_data = []
-    #TODO EMMA HERE:
     for datum in QA_dataset["train"]:
         train_data.append(
             {

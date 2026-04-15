@@ -5,7 +5,7 @@
 #SBATCH --output="%x.o%j"
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1
-#SBATCH --mem=10G
+#SBATCH --mem=15G
 #SBATCH --time=60:00:00
 module load cuda/12.5
 

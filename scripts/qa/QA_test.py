@@ -117,7 +117,7 @@ if __name__ == "__main__":
                 base_model = "Qwen/Qwen3-0.6B"
                 prefix = "qwen"
             # handle data
-            QA_dataset = load_dataset("google/xquad", f"xsquad.{datasets[idx]}", trust_remote_code=True)
+            QA_dataset = load_dataset("google/xquad", f"xquad.{datasets[idx]}", trust_remote_code=True)
             QA_dataset = QA_dataset["validation"] # the only split that exists is validation, split into 2
             QA_dataset = QA_dataset.train_test_split(test_size=0.1)
 

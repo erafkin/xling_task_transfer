@@ -6,6 +6,64 @@ from transformers import AutoModelForQuestionAnswering, AutoModelForMaskedLM, Au
 from tqdm import tqdm
 from scripts.task_vectors import TaskVector
 import gc
+import evaluate
+import collections
+import numpy as np
+
+metric = evaluate.load("squad")
+
+def compute_metrics(start_logits, end_logits, features, examples):
+    # from https://huggingface.co/learn/llm-course/en/chapter7/7#training-loop
+    max_answer_length = 30
+    n_best = 20
+
+    example_to_features = collections.defaultdict(list)
+    for idx, feature in enumerate(features):
+        example_to_features[feature["example_id"]].append(idx)
+
+    predicted_answers = []
+    for example in tqdm(examples):
+        example_id = example["id"]
+        context = example["context"]
+        answers = []
+
+        # Loop through all features associated with that example
+        for feature_index in example_to_features[example_id]:
+            start_logit = start_logits[feature_index]
+            end_logit = end_logits[feature_index]
+            offsets = features[feature_index]["offset_mapping"]
+
+            start_indexes = np.argsort(start_logit)[-1 : -n_best - 1 : -1].tolist()
+            end_indexes = np.argsort(end_logit)[-1 : -n_best - 1 : -1].tolist()
+            for start_index in start_indexes:
+                for end_index in end_indexes:
+                    # Skip answers that are not fully in the context
+                    if offsets[start_index] is None or offsets[end_index] is None:
+                        continue
+                    # Skip answers with a length that is either < 0 or > max_answer_length
+                    if (
+                        end_index < start_index
+                        or end_index - start_index + 1 > max_answer_length
+                    ):
+                        continue
+
+                    answer = {
+                        "text": context[offsets[start_index][0] : offsets[end_index][1]],
+                        "logit_score": start_logit[start_index] + end_logit[end_index],
+                    }
+                    answers.append(answer)
+
+        # Select the answer with the best score
+        if len(answers) > 0:
+            best_answer = max(answers, key=lambda x: x["logit_score"])
+            predicted_answers.append(
+                {"id": example_id, "prediction_text": best_answer["text"]}
+            )
+        else:
+            predicted_answers.append({"id": example_id, "prediction_text": ""})
+
+    theoretical_answers = [{"id": ex["id"], "answers": ex["answers"]} for ex in examples]
+    return metric.compute(predictions=predicted_answers, references=theoretical_answers)
 
 def get_language_vector(base_model: str, saved_language: str):
     lang_vector = TaskVector(pretrained_model=AutoModelForMaskedLM.from_pretrained(base_model),
@@ -22,12 +80,12 @@ def apply_language_vector_to_model(qa_model_checkpoint: str, language_vector:Tas
     return qa_model
     
 
-def test_lang_qa(qa, language_model, pretrained_checkpoint, dataset, best_lambda:float=1.0, batch_size:int=32):
+def test_lang_qa(qa, language_model, pretrained_checkpoint, dataset,raw_dataset, best_lambda:float=1.0, batch_size:int=32):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     lv = get_language_vector(pretrained_checkpoint, language_model)
     qa = apply_language_vector_to_model(qa, lv, best_lambda) 
-    preds = []
-    labels = []
+    start_logits = []
+    end_logits = []
     qa.to(device).eval()
 
     collator = DefaultDataCollator()
@@ -35,17 +93,22 @@ def test_lang_qa(qa, language_model, pretrained_checkpoint, dataset, best_lambda
     with torch.no_grad():
         for batch in tqdm(test_dataloader):
             inputs = {k: v.to(device) for k, v in batch.items() if k != "label"}
-            logits = qa(**inputs).logits
-            predictions = torch.argmax(logits, dim=-1).cpu().numpy()
-            preds.extend(predictions)
-            labels.extend(batch["labels"].cpu().numpy())
-    total = len(preds)
-    correct = sum(1 for pred, lab in zip(preds,labels) if pred == lab)
-    accuracy = correct / total if total > 0 else 0
+            outputs = qa(**inputs)
+            start_logits.append(outputs.start_logits.cpu().numpy())
+            end_logits.append(outputs.end_logits.cpu().numpy())
+    start_logits = np.concatenate(start_logits)
+    end_logits = np.concatenate(end_logits)
+    start_logits = start_logits[: len(dataset)]
+    end_logits = end_logits[: len(dataset)]
+
+    metrics = compute_metrics(
+        start_logits, end_logits, dataset, raw_dataset
+    )
+    print(metrics)
     qa.to("cpu")
     del qa
     gc.collect()
-    return accuracy
+    return metrics
 
 
 
@@ -88,7 +151,7 @@ def test_lang_qa_causal(qa, language_model, pretrained_checkpoint, dataset, best
 if __name__ == "__main__":
     test_lambdas = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     model_base = "base_finetuned"
-    base_models = ["bert", "roberta", "qwen", "granite"]
+    base_models = ["bert", "roberta"]#, "qwen", "granite"]
     datasets = ["en", "es", "hi", "de", "zh", "fr","ru"]
     language_models = ["language_en_done", 
                     "language_es_done", 
@@ -217,7 +280,7 @@ if __name__ == "__main__":
                         local_files_only=True,
                     )
                     qa.eval()
-                    accuracy = test_lang_qa(qa, f"{prefix}/{model}", base_model, tokenized_dataset["test"], l, batch_size)
+                    accuracy = test_lang_qa(qa, f"{prefix}/{model}", base_model, tokenized_dataset["test"], QA_dataset["test"],l, batch_size)
                     hyperparameter_results[l] = accuracy
                 print("hyperparamter serach results")
                 print(hyperparameter_results)
@@ -235,7 +298,7 @@ if __name__ == "__main__":
                     )
 
                     qa.eval()                         # disables dropout / batch‑norm  
-                    accuracy= test_lang_qa(qa, f"{prefix}/{model}", base_model, tokenized_dataset["train"], best_lambda, batch_size)
+                    accuracy= test_lang_qa(qa, f"{prefix}/{model}", base_model, tokenized_dataset["train"], QA_dataset["train"], best_lambda, batch_size)
                     print(f"accuracy: {accuracy}")  
                     f.write(f"\n======language: {model.split('_')[1]}=======\n")
                     f.write(f"best lambda: {best_lambda}\n")

@@ -157,7 +157,7 @@ if __name__ == "__main__":
     test_lambdas = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     model_base = "base_finetuned"
     base_models = ["bert", "roberta"]#, "qwen", "granite"]
-    datasets = ["en", "es", "hi", "de", "zh", "fr","ru"]
+    datasets = ["en", "fr", "es", "hi", "de", "zh", "ru",] # THERE IS NO FRENCH FOR XQUAD
     language_models = ["language_en_done", 
                     "language_es_done", 
                     "language_hi_done", 
@@ -185,9 +185,14 @@ if __name__ == "__main__":
                 base_model = "Qwen/Qwen3-0.6B"
                 prefix = "qwen"
             # handle data
-            QA_dataset = load_dataset("google/xquad", f"xquad.{datasets[idx]}", trust_remote_code=True)
-            QA_dataset = QA_dataset["validation"] # the only split that exists is validation, split into 2
-            QA_dataset = QA_dataset.train_test_split(test_size=0.1)
+            if datasets[idx] == "fr":
+                QA_dataset = load_dataset("lincoln/newsquadfr", trust_remote_code=True)
+                QA_dataset = QA_dataset["train"] # train is the main split.
+                QA_dataset = QA_dataset.train_test_split(test_size=0.1)
+            else:
+                QA_dataset = load_dataset("google/xquad", f"xquad.{datasets[idx]}", trust_remote_code=True)
+                QA_dataset = QA_dataset["validation"] # the only split that exists is validation, split into 2
+                QA_dataset = QA_dataset.train_test_split(test_size=0.1)
 
             tokenizer = AutoTokenizer.from_pretrained(base_model)
 

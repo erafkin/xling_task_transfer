@@ -157,7 +157,7 @@ if __name__ == "__main__":
     test_lambdas = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     model_base = "base_finetuned"
     base_models = ["bert", "roberta"]#, "qwen", "granite"]
-    datasets = ["en", "fr", "es", "hi", "de", "zh", "ru",] # THERE IS NO FRENCH FOR XQUAD
+    datasets = ["en", "es", "hi", "de", "zh", "fr", "ru",] # THERE IS NO FRENCH FOR XQUAD
     language_models = ["language_en_done", 
                     "language_es_done", 
                     "language_hi_done", 

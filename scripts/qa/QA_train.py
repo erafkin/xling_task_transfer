@@ -26,25 +26,31 @@ def train_QA_model(model_checkpoint):
     QA_dataset = QA_dataset["train"]
     QA_dataset.train_test_split(test_size=0.1, seed=42)
 
-
-    def preprocess(examples):
+    max_length = 384
+    stride = 128
+    def preprocess_training_examples(examples):
+        # from https://huggingface.co/learn/llm-course/en/chapter7/7#training-loop
         questions = [q.strip() for q in examples["question"]]
         inputs = tokenizer(
             questions,
             examples["context"],
-            max_length=384,
+            max_length=max_length,
             truncation="only_second",
+            stride=stride,
+            return_overflowing_tokens=True,
             return_offsets_mapping=True,
             padding="max_length",
         )
 
         offset_mapping = inputs.pop("offset_mapping")
+        sample_map = inputs.pop("overflow_to_sample_mapping")
         answers = examples["answers"]
         start_positions = []
         end_positions = []
 
         for i, offset in enumerate(offset_mapping):
-            answer = answers[i]
+            sample_idx = sample_map[i]
+            answer = answers[sample_idx]
             start_char = answer["answer_start"][0]
             end_char = answer["answer_start"][0] + len(answer["text"][0])
             sequence_ids = inputs.sequence_ids(i)
@@ -58,8 +64,8 @@ def train_QA_model(model_checkpoint):
                 idx += 1
             context_end = idx - 1
 
-            # If the answer is not fully inside the context, label it (0, 0)
-            if offset[context_start][0] > end_char or offset[context_end][1] < start_char:
+            # If the answer is not fully inside the context, label is (0, 0)
+            if offset[context_start][0] > start_char or offset[context_end][1] < end_char:
                 start_positions.append(0)
                 end_positions.append(0)
             else:
@@ -79,7 +85,7 @@ def train_QA_model(model_checkpoint):
         return inputs
 
     tokenized_dataset= QA_dataset.map(
-        preprocess,
+        preprocess_training_examples,
         batched=True,
         remove_columns=QA_dataset["train"].column_names
     )
@@ -198,10 +204,10 @@ if __name__ == "__main__":
     bert = "google-bert/bert-base-multilingual-cased"
     qwen = "Qwen/Qwen3-0.6B"
     granite = "ibm-granite/granite-4.0-350m"
-    for m in [qwen, granite]:
-        train_QA_model_causal(m)
-    # for i, model in enumerate([roberta, bert, qwen, granite]):
-    #     if i < 2:
-    #         train_QA_model(model)
-    #     else:
-    #         train_QA_model_causal(model)
+    # for m in [qwen, granite]:
+    #     train_QA_model_causal(m)
+    for i, model in enumerate([roberta, bert, qwen, granite]):
+        if i < 2:
+            train_QA_model(model)
+        else:
+            train_QA_model_causal(model)

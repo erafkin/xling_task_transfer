@@ -171,4 +171,5 @@ if __name__ == "__main__":
     bert = "google-bert/bert-base-multilingual-cased"
     qwen = "Qwen/Qwen3-0.6B"
     granite = "ibm-granite/granite-4.0-350m"
-    train_NLI_model_causal(granite)
+    for model in [qwen, granite]:
+        train_NLI_model_causal(model)

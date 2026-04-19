@@ -133,7 +133,7 @@ def train_QA_model_causal(model_checkpoint):
         tokenizer.pad_token = tokenizer.eos_token
         model.config.pad_token_id = tokenizer.eos_token_id
    
-    QA_dataset = load_dataset("rajpurkar/squad",trust_remote_code=True)
+    QA_dataset = load_dataset("rajpurkar/squad", trust_remote_code=True)
     QA_dataset = QA_dataset["train"]
     QA_dataset.train_test_split(test_size=0.1, seed=42)   
     train_data = []
@@ -190,7 +190,7 @@ def train_QA_model_causal(model_checkpoint):
         )    
     
     trainer.train()
-    trainer.save_model(f"{output_prefix}/NLI_en")
+    trainer.save_model(f"{output_prefix}/QA_en")
     wandb.finish()
 
 if __name__ == "__main__":
@@ -198,8 +198,10 @@ if __name__ == "__main__":
     bert = "google-bert/bert-base-multilingual-cased"
     qwen = "Qwen/Qwen3-0.6B"
     granite = "ibm-granite/granite-4.0-350m"
-    for i, model in enumerate([roberta, bert, qwen, granite]):
-        if i < 2:
-            train_QA_model(model)
-        else:
-            train_QA_model_causal(model)
+    for m in [qwen, granite]:
+        train_QA_model_causal(m)
+    # for i, model in enumerate([roberta, bert, qwen, granite]):
+    #     if i < 2:
+    #         train_QA_model(model)
+    #     else:
+    #         train_QA_model_causal(model)

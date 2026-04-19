@@ -1,5 +1,6 @@
 import json
 import torch
+from transformers import default_data_collator
 from torch.utils.data import DataLoader
 from datasets import load_dataset
 from transformers import AutoModelForQuestionAnswering, AutoModelForMaskedLM, AutoTokenizer, DefaultDataCollator, AutoConfig, DataCollatorForTokenClassification, BertForSequenceClassification, AutoModelForCausalLM
@@ -82,17 +83,21 @@ def apply_language_vector_to_model(qa_model_checkpoint: str, language_vector:Tas
 
 def test_lang_qa(qa, language_model, pretrained_checkpoint, dataset,raw_dataset, best_lambda:float=1.0, batch_size:int=32):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    ds = dataset.remove_columns(["example_id", "offset_mapping"])
+    dataset.set_format("torch")
+
     lv = get_language_vector(pretrained_checkpoint, language_model)
     qa = apply_language_vector_to_model(qa, lv, best_lambda) 
     start_logits = []
     end_logits = []
     qa.to(device).eval()
 
-    collator = DefaultDataCollator()
-    test_dataloader = DataLoader(dataset, batch_size=batch_size, collate_fn=collator, shuffle=False)
+    test_dataloader = DataLoader(ds, batch_size=batch_size, collate_fn=default_data_collator, shuffle=False)
+    
     with torch.no_grad():
         for batch in tqdm(test_dataloader):
             inputs = {k: v.to(device) for k, v in batch.items() if k != "label"}
+            
             outputs = qa(**inputs)
             start_logits.append(outputs.start_logits.cpu().numpy())
             end_logits.append(outputs.end_logits.cpu().numpy())
@@ -108,7 +113,7 @@ def test_lang_qa(qa, language_model, pretrained_checkpoint, dataset,raw_dataset,
     qa.to("cpu")
     del qa
     gc.collect()
-    return metrics
+    return metrics["exact_match"]
 
 
 

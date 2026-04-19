@@ -24,7 +24,7 @@ def train_QA_model(model_checkpoint):
     # train set only of SQuAD to avoid data bleed.
     QA_dataset = load_dataset("rajpurkar/squad", trust_remote_code=True)
     QA_dataset = QA_dataset["train"]
-    QA_dataset.train_test_split(test_size=0.1, seed=42)
+    QA_dataset = QA_dataset.train_test_split(test_size=0.1, seed=42)
 
     max_length = 384
     stride = 128
@@ -141,7 +141,7 @@ def train_QA_model_causal(model_checkpoint):
    
     QA_dataset = load_dataset("rajpurkar/squad", trust_remote_code=True)
     QA_dataset = QA_dataset["train"]
-    QA_dataset.train_test_split(test_size=0.1, seed=42)   
+    QA_dataset = QA_dataset.train_test_split(test_size=0.1, seed=42)   
     train_data = []
     for datum in QA_dataset["train"]:
         train_data.append(

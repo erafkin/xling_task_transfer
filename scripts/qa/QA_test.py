@@ -135,7 +135,7 @@ def test_lang_qa_causal(qa, language_model, pretrained_checkpoint, dataset, best
             inputs = tokenizer(prompt, return_tensors="pt").to(device)
             output_ids = qa.generate(
                 **inputs,
-                max_new_tokens=10,
+                max_new_tokens=100,
                 do_sample=False
             )
             text = tokenizer.decode(output_ids[0], skip_special_tokens=True)

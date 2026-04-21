@@ -147,7 +147,7 @@ def train_NLI_model_causal(model_checkpoint):
             save_strategy="no",
             warmup_ratio=0.01,
             lr_scheduler_type="linear",
-            max_grad_norm=1.0,
+            max_grad_norm=0.5,
             bf16=True,
             max_length=512,
             report_to='wandb',
@@ -171,5 +171,5 @@ if __name__ == "__main__":
     bert = "google-bert/bert-base-multilingual-cased"
     qwen = "Qwen/Qwen3-0.6B"
     granite = "ibm-granite/granite-4.0-350m"
-    for model in [qwen, granite]:
+    for model in [granite]:
         train_NLI_model_causal(model)

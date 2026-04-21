@@ -135,13 +135,13 @@ def test_lang_qa_causal(qa, language_model, pretrained_checkpoint, dataset, best
             inputs = tokenizer(prompt, return_tensors="pt").to(device)
             output_ids = qa.generate(
                 **inputs,
-                max_new_tokens=100,
+                max_new_tokens=20,
                 do_sample=False
             )
             text = tokenizer.decode(output_ids[0], skip_special_tokens=True)
             pred_tag = text.split("Answer:")[-1].strip()
             preds.append(pred_tag)
-            labels.append(data['label'])
+            labels.append(data['answers']["text"][0])
     print("PREDICTIONS: ", preds[:5])
     print("LABELS: ", labels[:5])
     total = len(preds)
@@ -156,8 +156,7 @@ def test_lang_qa_causal(qa, language_model, pretrained_checkpoint, dataset, best
 if __name__ == "__main__":
     test_lambdas = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     model_base = "base_finetuned"
-    base_models = ["bert", "roberta"]#, "qwen", "granite"]
-    base_models = ["qwen", "granite"]
+    base_models = ["bert", "roberta", "qwen", "granite"]
     datasets = ["en", "es", "hi", "de", "zh", "fr", "ru",] # THERE IS NO FRENCH FOR XQUAD
     language_models = ["language_en_done", 
                     "language_es_done", 

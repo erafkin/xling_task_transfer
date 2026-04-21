@@ -184,7 +184,7 @@ def train_QA_model_causal(model_checkpoint):
             max_length=512,
             report_to='wandb',
             project='xlt',
-            run_name=f"{'qwen_' if 'qwen' in model_checkpoint else 'granite_'}QA_en",
+            run_name=f"{'qwen_' if 'Qwen' in model_checkpoint else 'granite_'}QA_en",
     )
     if "granite" in model_checkpoint:
         model.config.use_cache = False

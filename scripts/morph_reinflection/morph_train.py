@@ -1,10 +1,59 @@
-from transformers import AutoTokenizer, AutoModelForCausalLM, AutoConfig, AutoModelForMaskedLM, TrainingArguments, Trainer
+from transformers import AutoTokenizer, AutoModelForCausalLM, TrainingArguments, Trainer, AutoModel
 from trl import SFTTrainer, SFTConfig
 from datasets import Dataset, DatasetDict
 
 import wandb
 import torch
+import torch.nn as nn
+
 import requests
+
+
+class EncoderDecoderReinflector(nn.Module):
+    def __init__(self, model_name, vocab_size, hidden=256):
+        super().__init__()
+
+        self.encoder = AutoModel.from_pretrained(model_name)
+
+        self.embedding = nn.Embedding(vocab_size, hidden)
+
+        self.decoder = nn.TransformerDecoder(
+            nn.TransformerDecoderLayer(
+                d_model=self.encoder.config.hidden_size,
+                nhead=8,
+                batch_first=True
+            ),
+            num_layers=2
+        )
+
+        self.proj = nn.Linear(self.encoder.config.hidden_size, vocab_size)
+
+    def forward(self, input_ids, attention_mask, decoder_input_ids, labels=None):
+        enc = self.encoder(
+            input_ids=input_ids,
+            attention_mask=attention_mask
+        ).last_hidden_state
+
+        dec_in = self.embedding(decoder_input_ids)
+
+        tgt_mask = nn.Transformer.generate_square_subsequent_mask(
+            dec_in.size(1)
+        ).to(dec_in.device)
+
+        dec = self.decoder(
+            dec_in,
+            enc,
+            tgt_mask=tgt_mask
+        )
+
+        logits = self.proj(dec)
+
+        loss = None
+        if labels is not None:
+            loss_fn = nn.CrossEntropyLoss(ignore_index=-100)
+            loss = loss_fn(logits.view(-1, logits.size(-1)), labels.view(-1))
+
+        return {"loss": loss, "logits": logits}
 
 def get_unimorph_data(lang:str = "eng") -> DatasetDict:
     base = "https://raw.githubusercontent.com/unimorph/"
@@ -65,38 +114,48 @@ def train_model_causal(model_checkpoint):
         output_prefix = "qwen/base_finetuned"
         run_prefix = "qwen"
     if "bert" in model_checkpoint:
-        tokenizer.pad_token = tokenizer.sep_token or tokenizer.eos_token
+        def preprocess(ex, tokenizer):
+            src = f"Root {ex['root']} Features {ex['features']}"
+            tgt = ex["inflection"]
 
-        config = AutoConfig.from_pretrained(model_checkpoint)
-        # --- force causal behavior ---
-        model.config.is_decoder = True
-        model.config.add_cross_attention = False
-        model.config.is_encoder_decoder = False
-
-        model = AutoModelForMaskedLM.from_pretrained(
-            model_checkpoint,
-            config=config,
-        )
-        def tokenize(batch):
-            return tokenizer(
-                batch["text"],
+            model_in = tokenizer(
+                src,
                 truncation=True,
                 padding="max_length",
                 max_length=128
             )
 
-        def collate(features):
-            input_ids = torch.tensor([f["input_ids"] for f in features])
-            attention_mask = torch.tril(torch.ones((input_ids.size(1), input_ids.size(1))))
-            labels = input_ids.clone()
-            return {
-                "input_ids": input_ids,
-                "attention_mask": attention_mask,
-                "labels": labels,
-            }
+            with tokenizer.as_target_tokenizer():
+                tgt_tok = tokenizer(
+                    tgt,
+                    truncation=True,
+                    padding="max_length",
+                    max_length=32
+                )
+
+            decoder_input = tgt_tok["input_ids"][:-1]
+            labels = tgt_tok["input_ids"][1:]
+
+            labels = [
+                t if t != tokenizer.pad_token_id else -100
+                for t in labels
+            ]
+
+            model_in["decoder_input_ids"] = decoder_input
+            model_in["labels"] = labels
+            return model_in
+        tokenizer.pad_token = tokenizer.sep_token or tokenizer.eos_token
+
+        model = EncoderDecoderReinflector(model_checkpoint, vocab_size=len(tokenizer))
+
+        train_ds = train_dataset.map(lambda x: preprocess(x, tokenizer))
+        val_ds = validation_dataset.map(lambda x: preprocess(x, tokenizer))
+
+        train_ds.set_format("torch")
+        val_ds.set_format("torch")
 
         args = TrainingArguments(
-            output_dir="./mlm_clm",
+            output_dir=f"{output_prefix}/morph_en",
             per_device_train_batch_size=8,
             num_train_epochs=3,
             learning_rate=1e-5,
@@ -110,8 +169,8 @@ def train_model_causal(model_checkpoint):
         trainer = Trainer(
             model=model,
             args=args,
-            train_dataset=train_dataset.map(tokenize, batched=True),
-            data_collator=collate
+            train_dataset=train_ds,
+            eval_dataset=val_ds
         )
 
     else:
@@ -124,11 +183,6 @@ def train_model_causal(model_checkpoint):
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
             model.config.pad_token_id = tokenizer.eos_token_id
-
-   
-    
-    
-
 
         training_args = SFTConfig(
                 output_dir=f"{output_prefix}/morph_en",

@@ -1,4 +1,4 @@
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, AutoConfig, AutoModelForMaskedLM
 from trl import SFTTrainer, SFTConfig
 from datasets import Dataset, DatasetDict
 
@@ -31,13 +31,22 @@ def train_model_causal(model_checkpoint):
         parse dataset to be text-to-text
     """
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, trust_remote_code=True)
+    if "bert" in model_checkpoint:
+        config = AutoConfig.from_pretrained(model_checkpoint)
+        config.is_decoder = True
+        config.add_cross_attention = False
+
+        model = AutoModelForMaskedLM.from_pretrained(
+            model_checkpoint,
+            config=config,
+        )
+    else:
     
-    model = AutoModelForCausalLM.from_pretrained(
-        model_checkpoint,
-        dtype=torch.float32,
-        device_map="auto",
-        is_decoder=True
-    )
+        model = AutoModelForCausalLM.from_pretrained(
+            model_checkpoint,
+            dtype=torch.float32,
+            device_map="auto",
+        )
     if tokenizer.eos_token is None:
         tokenizer.eos_token = "</s>"
 

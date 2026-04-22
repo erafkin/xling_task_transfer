@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name="train_morph"
+#SBATCH --job-name="morph_train"
 #SBATCH --nodes=1
 #SBATCH --partition=base
 #SBATCH --output="%x.o%j"

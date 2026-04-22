@@ -38,10 +38,15 @@ def train_model_causal(model_checkpoint):
         device_map="auto",
         is_decoder=True
     )
-    
+    if tokenizer.eos_token is None:
+        tokenizer.eos_token = "</s>"
+
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
-        model.config.pad_token_id = tokenizer.eos_token_id
+
+    model.config.eos_token_id = tokenizer.convert_tokens_to_ids(tokenizer.eos_token)
+    model.config.pad_token_id = tokenizer.pad_token_id
+    
     train_data = []
     dataset = get_unimorph_data()
     for datum in dataset["train"]:

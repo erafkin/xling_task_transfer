@@ -1,4 +1,4 @@
-from transformers import AutoTokenizer, AutoModelForCausalLM, AutoConfig, AutoModelForMaskedLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, AutoConfig, AutoModelForMaskedLM, TrainingArguments, Trainer
 from trl import SFTTrainer, SFTConfig
 from datasets import Dataset, DatasetDict
 
@@ -30,32 +30,6 @@ def train_model_causal(model_checkpoint):
     """
         parse dataset to be text-to-text
     """
-    tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, trust_remote_code=True)
-    if "bert" in model_checkpoint:
-        config = AutoConfig.from_pretrained(model_checkpoint)
-        config.is_decoder = True
-        config.add_cross_attention = False
-
-        model = AutoModelForMaskedLM.from_pretrained(
-            model_checkpoint,
-            config=config,
-        )
-    else:
-    
-        model = AutoModelForCausalLM.from_pretrained(
-            model_checkpoint,
-            dtype=torch.float32,
-            device_map="auto",
-        )
-    if tokenizer.eos_token is None:
-        tokenizer.eos_token = "</s>"
-
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
-
-    model.config.eos_token_id = tokenizer.convert_tokens_to_ids(tokenizer.eos_token)
-    model.config.pad_token_id = tokenizer.pad_token_id
-    
     train_data = []
     dataset = get_unimorph_data()
     for datum in dataset["train"]:
@@ -77,6 +51,7 @@ def train_model_causal(model_checkpoint):
         )
     train_dataset = Dataset.from_list(train_data)
     validation_dataset = Dataset.from_list(validation_data)
+    tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, trust_remote_code=True)
     if "roberta" in model_checkpoint:
         output_prefix = "xlm-roberta/base_finetuned"
         run_prefix = "roberta"
@@ -89,38 +64,102 @@ def train_model_causal(model_checkpoint):
     else:
         output_prefix = "qwen/base_finetuned"
         run_prefix = "qwen"
+    if "bert" in model_checkpoint:
+        tokenizer.pad_token = tokenizer.sep_token or tokenizer.eos_token
 
+        config = AutoConfig.from_pretrained(model_checkpoint)
+        # --- force causal behavior ---
+        model.config.is_decoder = True
+        model.config.add_cross_attention = False
+        model.config.is_encoder_decoder = False
 
-    training_args = SFTConfig(
-            output_dir=f"{output_prefix}/morph_en",
-            eval_strategy="epoch",
+        model = AutoModelForMaskedLM.from_pretrained(
+            model_checkpoint,
+            config=config,
+        )
+        def tokenize(batch):
+            return tokenizer(
+                batch["text"],
+                truncation=True,
+                padding="max_length",
+                max_length=128
+            )
+
+        def collate(features):
+            input_ids = torch.tensor([f["input_ids"] for f in features])
+            attention_mask = torch.tril(torch.ones((input_ids.size(1), input_ids.size(1))))
+            labels = input_ids.clone()
+            return {
+                "input_ids": input_ids,
+                "attention_mask": attention_mask,
+                "labels": labels,
+            }
+
+        args = TrainingArguments(
+            output_dir="./mlm_clm",
+            per_device_train_batch_size=8,
+            num_train_epochs=3,
             learning_rate=1e-5,
-            num_train_epochs=3, 
             weight_decay=0.01,
-            per_device_train_batch_size=16 if "granite" in model_checkpoint else 8,
-            per_device_eval_batch_size=8 if "granite" in model_checkpoint else 4,
-            push_to_hub=False,
-            save_strategy="no",
-            warmup_ratio=0.01,
-            lr_scheduler_type="linear",
-            max_grad_norm=1.0,
-            bf16=True,
-            max_length=512,
+            logging_steps=50,
             report_to='wandb',
             project='xlt',
             run_name=f"{run_prefix}_morph_en",
-    )
-    if "granite" in model_checkpoint:
-        model.config.use_cache = False
-    trainer = SFTTrainer(
-        model=model,
-        args=training_args,
-        train_dataset=train_dataset,
-        eval_dataset=validation_dataset
-        )    
+        )
+
+        trainer = Trainer(
+            model=model,
+            args=args,
+            train_dataset=train_dataset.map(tokenize, batched=True),
+            data_collator=collate
+        )
+
+    else:
+    
+        model = AutoModelForCausalLM.from_pretrained(
+            model_checkpoint,
+            dtype=torch.float32,
+            device_map="auto",
+        )
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
+            model.config.pad_token_id = tokenizer.eos_token_id
+
+   
+    
+    
+
+
+        training_args = SFTConfig(
+                output_dir=f"{output_prefix}/morph_en",
+                eval_strategy="epoch",
+                learning_rate=1e-5,
+                num_train_epochs=3, 
+                weight_decay=0.01,
+                per_device_train_batch_size=16 if "granite" in model_checkpoint else 8,
+                per_device_eval_batch_size=8 if "granite" in model_checkpoint else 4,
+                push_to_hub=False,
+                save_strategy="no",
+                warmup_ratio=0.01,
+                lr_scheduler_type="linear",
+                max_grad_norm=1.0,
+                bf16=True,
+                max_length=512,
+                report_to='wandb',
+                project='xlt',
+                run_name=f"{run_prefix}_morph_en",
+        )
+        if "granite" in model_checkpoint:
+            model.config.use_cache = False
+        trainer = SFTTrainer(
+            model=model,
+            args=training_args,
+            train_dataset=train_dataset,
+            eval_dataset=validation_dataset
+            )    
     
     trainer.train()
-    trainer.save_model(f"{output_prefix}/QA_en")
+    trainer.save_model(f"{output_prefix}/morph_en")
     wandb.finish()
 
 if __name__ == "__main__":

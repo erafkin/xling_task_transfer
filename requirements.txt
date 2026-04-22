@@ -12,3 +12,5 @@ wandb
 # scikit-learn
 # matplotlib
 # urielplus
+unimorph
+requests

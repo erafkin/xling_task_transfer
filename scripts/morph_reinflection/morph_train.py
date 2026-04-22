@@ -10,7 +10,16 @@ def get_unimorph_data(lang:str = "eng") -> DatasetDict:
     base = "https://raw.githubusercontent.com/unimorph/"
     url = f"{base}{lang}/master/{lang}"
     text = requests.get(url).text.strip().split("\n")
-    dataset_as_list= [{"root": l[0], "features": l[2], "inflection": l[1]} for line in text for l in [line.split("\t")]]
+    dataset_as_list = [
+        {
+            "root": l[0],
+            "inflection": l[1],
+            "features": l[2] if len(l) > 2 else "None"
+        }
+        for line in text
+        for l in [line.split("\t")]
+        if len(l) >= 2
+    ]
     dataset = Dataset.from_list(dataset_as_list)
     dataset_dict_temp = dataset.train_test_split(test_size=0.2, seed=42)
     dataset_dict_temp1 = dataset_dict_temp["test"].train_test_split(test_size=0.5, seed=42)
@@ -26,7 +35,8 @@ def train_model_causal(model_checkpoint):
     model = AutoModelForCausalLM.from_pretrained(
         model_checkpoint,
         dtype=torch.float32,
-        device_map="auto"
+        device_map="auto",
+        is_decoder=True
     )
     
     if tokenizer.pad_token is None:

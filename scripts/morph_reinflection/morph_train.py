@@ -14,7 +14,7 @@ class EncoderDecoderReinflector(nn.Module):
         super().__init__()
 
         self.encoder = AutoModel.from_pretrained(model_name)
-
+        # I feel like there is no way that this will work for xlt because theres way too many new layers, just like DP. 
         self.embedding = nn.Embedding(vocab_size, hidden)
 
         self.decoder = nn.TransformerDecoder(
@@ -81,25 +81,7 @@ def train_model_causal(model_checkpoint):
     """
     train_data = []
     dataset = get_unimorph_data()
-    for datum in dataset["train"]:
-        train_data.append(
-            {
-                "text": (
-                    f"Root: {datum['root']}\n Features: {datum['features']}\n Inflection: {datum['inflection']}"
-                )
-            }
-        )
-    validation_data = []
-    for datum in dataset["validation"]:
-        validation_data.append(
-            {
-                "text": (
-                    f"Root: {datum['root']}\n Features: {datum['features']}\n Inflection: {datum['inflection']}"
-                )
-            }
-        )
-    train_dataset = Dataset.from_list(train_data)
-    validation_dataset = Dataset.from_list(validation_data)
+    
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, trust_remote_code=True)
     if "roberta" in model_checkpoint:
         output_prefix = "xlm-roberta/base_finetuned"
@@ -148,8 +130,8 @@ def train_model_causal(model_checkpoint):
 
         model = EncoderDecoderReinflector(model_checkpoint, vocab_size=len(tokenizer))
 
-        train_ds = train_dataset.map(lambda x: preprocess(x, tokenizer))
-        val_ds = validation_dataset.map(lambda x: preprocess(x, tokenizer))
+        train_ds = dataset["train"].map(lambda x: preprocess(x, tokenizer))
+        val_ds = dataset["validation"].map(lambda x: preprocess(x, tokenizer))
 
         train_ds.set_format("torch")
         val_ds.set_format("torch")
@@ -180,6 +162,25 @@ def train_model_causal(model_checkpoint):
             dtype=torch.float32,
             device_map="auto",
         )
+        for datum in dataset["train"]:
+            train_data.append(
+                {
+                    "text": (
+                        f"Root: {datum['root']}\n Features: {datum['features']}\n Inflection: {datum['inflection']}"
+                    )
+                }
+            )
+        validation_data = []
+        for datum in dataset["validation"]:
+            validation_data.append(
+                {
+                    "text": (
+                        f"Root: {datum['root']}\n Features: {datum['features']}\n Inflection: {datum['inflection']}"
+                    )
+                }
+            )
+        train_dataset = Dataset.from_list(train_data)
+        validation_dataset = Dataset.from_list(validation_data)
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
             model.config.pad_token_id = tokenizer.eos_token_id

@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name="morph_train"
 #SBATCH --nodes=1
-#SBATCH --partition=base
+#SBATCH --partition=spot
 #SBATCH --output="%x.o%j"
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1
@@ -11,7 +11,7 @@
 #SBATCH --mail-type=END,FAIL
 
 module load cuda/12.5
-
+unset LD_LIBRARY_PATH
 module load gcc/11.4.0
 export PYTHONPATH=/home/epr41/xling_task_transfer
 export WANDB_PROJECT="xlt"  

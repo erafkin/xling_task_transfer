@@ -9,49 +9,57 @@ import torch.nn as nn
 import requests
 
 
-class EncoderDecoderReinflector(nn.Module):
-    def __init__(self, model_name, vocab_size, hidden=256):
+class EncoderGRUReinflector(nn.Module):
+    def __init__(self, model_name, vocab_size, hidden=768):
         super().__init__()
 
         self.encoder = AutoModel.from_pretrained(model_name)
-        # I feel like there is no way that this will work for xlt because theres way too many new layers, just like DP. 
-        self.embedding = nn.Embedding(vocab_size, hidden)
 
-        self.decoder = nn.TransformerDecoder(
-            nn.TransformerDecoderLayer(
-                d_model=self.encoder.config.hidden_size,
-                nhead=8,
-                batch_first=True
-            ),
-            num_layers=2
+        # project encoder → small space
+        self.enc_proj = nn.Linear(
+            self.encoder.config.hidden_size, hidden
         )
 
-        self.proj = nn.Linear(self.encoder.config.hidden_size, vocab_size)
+        # shared embeddings
+        self.embedding = nn.Embedding(vocab_size, hidden)
+
+        # GRU decoder
+        self.decoder = nn.GRU(
+            input_size=hidden,
+            hidden_size=hidden,
+            batch_first=True
+        )
+
+        # output layer (tied idea optional)
+        self.out = nn.Linear(hidden, vocab_size)
 
     def forward(self, input_ids, attention_mask, decoder_input_ids, labels=None):
+
         enc = self.encoder(
             input_ids=input_ids,
             attention_mask=attention_mask
         ).last_hidden_state
 
+        # compress encoder output
+        enc = self.enc_proj(enc).mean(dim=1).unsqueeze(1)
+
+        # decoder inputs
         dec_in = self.embedding(decoder_input_ids)
 
-        tgt_mask = nn.Transformer.generate_square_subsequent_mask(
-            dec_in.size(1)
-        ).to(dec_in.device)
+        # prepend context
+        dec_in = dec_in + enc
 
-        dec = self.decoder(
-            dec_in,
-            enc,
-            tgt_mask=tgt_mask
-        )
+        dec_out, _ = self.decoder(dec_in)
 
-        logits = self.proj(dec)
+        logits = self.out(dec_out)
 
         loss = None
         if labels is not None:
             loss_fn = nn.CrossEntropyLoss(ignore_index=-100)
-            loss = loss_fn(logits.view(-1, logits.size(-1)), labels.view(-1))
+            loss = loss_fn(
+                logits.view(-1, logits.size(-1)),
+                labels.view(-1)
+            )
 
         return {"loss": loss, "logits": logits}
 
@@ -128,7 +136,7 @@ def train_model_causal(model_checkpoint):
             return model_in
         tokenizer.pad_token = tokenizer.sep_token or tokenizer.eos_token
 
-        model = EncoderDecoderReinflector(model_checkpoint, vocab_size=len(tokenizer))
+        model = EncoderGRUReinflector(model_checkpoint, vocab_size=len(tokenizer))
 
         train_ds = dataset["train"].map(lambda x: preprocess(x, tokenizer))
         val_ds = dataset["validation"].map(lambda x: preprocess(x, tokenizer))

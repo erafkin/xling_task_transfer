@@ -114,14 +114,12 @@ def train_model_causal(model_checkpoint):
                 padding="max_length",
                 max_length=128
             )
-
-            with tokenizer.as_target_tokenizer():
-                tgt_tok = tokenizer(
-                    tgt,
-                    truncation=True,
-                    padding="max_length",
-                    max_length=32
-                )
+            tgt_tok = tokenizer(
+                tgt,
+                truncation=True,
+                padding="max_length",
+                max_length=32
+            )
 
             decoder_input = tgt_tok["input_ids"][:-1]
             labels = tgt_tok["input_ids"][1:]
@@ -148,9 +146,11 @@ def train_model_causal(model_checkpoint):
             output_dir=f"{output_prefix}/morph_en",
             per_device_train_batch_size=8,
             num_train_epochs=3,
+            save_strategy="no",
+            eval_strategy="epoch",
             learning_rate=1e-5,
             weight_decay=0.01,
-            logging_steps=50,
+            logging_steps=1000,
             report_to='wandb',
             project='xlt',
             run_name=f"{run_prefix}_morph_en",

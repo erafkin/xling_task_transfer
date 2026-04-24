@@ -144,7 +144,7 @@ def train_model_causal(model_checkpoint):
 
         args = TrainingArguments(
             output_dir=f"{output_prefix}/morph_en",
-            per_device_train_batch_size=8,
+            per_device_train_batch_size=32,
             num_train_epochs=3,
             save_strategy="no",
             eval_strategy="epoch",
@@ -230,5 +230,5 @@ if __name__ == "__main__":
     bert = "google-bert/bert-base-multilingual-cased"
     qwen = "Qwen/Qwen3-0.6B"
     granite = "ibm-granite/granite-4.0-350m"
-    for m in [bert, roberta, qwen, granite]:
+    for m in [qwen, granite]:
         train_model_causal(m)

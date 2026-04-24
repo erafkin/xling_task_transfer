@@ -11,12 +11,17 @@
 #SBATCH --mail-type=END,FAIL
 
 module load cuda/12.5
-unset LD_LIBRARY_PATH
+#unset LD_LIBRARY_PATH
 module load gcc/11.4.0
 export PYTHONPATH=/home/epr41/xling_task_transfer
 export WANDB_PROJECT="xlt"  
 python3.11 -m venv venv
 source venv/bin/activate
-pip3 install -r requirements.txt
+# install correct torch FIRST
+pip install torch==2.5.1+cu124 torchvision==0.20.1+cu124 \
+  --index-url https://download.pytorch.org/whl/cu124
+# then install rest WITHOUT touching torch
+pip install -r requirements.txt --upgrade-strategy only-if-needed
+
 python3.11 --version
 python3.11 ./scripts/morph_reinflection/morph_train.py

@@ -230,5 +230,5 @@ if __name__ == "__main__":
     bert = "google-bert/bert-base-multilingual-cased"
     qwen = "Qwen/Qwen3-0.6B"
     granite = "ibm-granite/granite-4.0-350m"
-    for m in [qwen, granite]:
+    for m in [granite]:
         train_model_causal(m)

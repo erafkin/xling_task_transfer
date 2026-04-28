@@ -9,60 +9,6 @@ import torch.nn as nn
 import requests
 
 
-class EncoderGRUReinflector(nn.Module):
-    def __init__(self, model_name, vocab_size, hidden=768):
-        super().__init__()
-
-        self.encoder = AutoModel.from_pretrained(model_name)
-
-        # project encoder → small space
-        self.enc_proj = nn.Linear(
-            self.encoder.config.hidden_size, hidden
-        )
-
-        # shared embeddings
-        self.embedding = nn.Embedding(vocab_size, hidden)
-
-        # GRU decoder
-        self.decoder = nn.GRU(
-            input_size=hidden,
-            hidden_size=hidden,
-            batch_first=True
-        )
-
-        # output layer (tied idea optional)
-        self.out = nn.Linear(hidden, vocab_size)
-
-    def forward(self, input_ids, attention_mask, decoder_input_ids, labels=None):
-
-        enc = self.encoder(
-            input_ids=input_ids,
-            attention_mask=attention_mask
-        ).last_hidden_state
-
-        # compress encoder output
-        enc = self.enc_proj(enc).mean(dim=1).unsqueeze(1)
-
-        # decoder inputs
-        dec_in = self.embedding(decoder_input_ids)
-
-        # prepend context
-        dec_in = dec_in + enc
-
-        dec_out, _ = self.decoder(dec_in)
-
-        logits = self.out(dec_out)
-
-        loss = None
-        if labels is not None:
-            loss_fn = nn.CrossEntropyLoss(ignore_index=-100)
-            loss = loss_fn(
-                logits.view(-1, logits.size(-1)),
-                labels.view(-1)
-            )
-
-        return {"loss": loss, "logits": logits}
-
 class BertDecoderReinflector(nn.Module):
     def __init__(self, model_name, vocab_size, hidden=128):
         super().__init__()
@@ -143,22 +89,6 @@ def train_model_causal(model_checkpoint):
     """
         parse dataset to be text-to-text
     """
-    def compute_metrics(eval_pred):
-        logits, labels = eval_pred
-        preds = np.argmax(logits, axis=-1)
-
-        # ignore padding
-        mask = labels != -100
-
-        # exact sequence match
-        correct = 0
-        total = labels.shape[0]
-
-        for p, l, m in zip(preds, labels, mask):
-            if np.array_equal(p[m], l[m]):
-                correct += 1
-
-        return {"accuracy": correct / total}
     train_data = []
     dataset = get_unimorph_data()
     

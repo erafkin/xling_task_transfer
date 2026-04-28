@@ -1,15 +1,12 @@
 import torch
 from torch.utils.data import DataLoader
-from datasets import Dataset, DatasetDict
-from transformers import AutoModelForMaskedLM, AutoTokenizer, AutoModelForCausalLM, DefaultDataCollator
+from transformers import AutoModelForMaskedLM, AutoTokenizer, AutoModelForCausalLM
 from tqdm import tqdm
 from safetensors.torch import load_model
 from scripts.task_vectors import TaskVector
-from scripts.task_utils import load_conllu_data
-from scripts.morph_reinflection.morph_train import EncoderGRUReinflector, get_unimorph_data
+from scripts.morph_reinflection.morph_train import BertDecoderReinflector, get_unimorph_data
 import gc
 import json
-import numpy as np
 
 def get_language_vector(base_model: str, saved_language: str):
     lang_vector = TaskVector(pretrained_model=AutoModelForMaskedLM.from_pretrained(base_model),
@@ -26,90 +23,6 @@ def apply_language_vector_to_model(morph_model_checkpoint: str, language_vector:
     model = language_vector.apply_to(morph_model_checkpoint, scaling_coef=lambda_coef)
     return model
 
-
-def old_test_lang_morph(morph_model, language_model, pretrained_checkpoint, dataset, best_lambda:float=1.0, batch_size:int=32):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    lv = get_language_vector(pretrained_checkpoint, language_model)
-    morph = apply_language_vector_to_model(morph_model, lv, best_lambda)
-    total = 0
-    correct = 0
-    preds = []
-    labels = []
-    morph.to(device).eval()
-    dataset.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"])
-
-    test_dataloader = DataLoader(dataset, batch_size=batch_size)
-    with torch.no_grad():
-        for batch in tqdm(test_dataloader):
-            input_ids = batch["input_ids"].to(device)
-            attention_mask = batch["attention_mask"].to(device)
-            labs = batch["labels"].to(device)
-
-            B = input_ids.size(0)
-
-            # start token (use pad or bos)
-            start_token_id = tokenizer.pad_token_id
-
-            # initialize decoder input
-            decoder_input_ids = torch.full(
-                (B, 1),
-                start_token_id,
-                dtype=torch.long,
-                device=device
-            )
-
-            generated = []
-
-            for _ in range(128):
-                
-                outputs = morph(
-                    input_ids=input_ids,
-                    attention_mask=attention_mask,
-                    decoder_input_ids=decoder_input_ids
-                )
-
-                logits = outputs["logits"]
-                next_token_logits = logits[:, -1, :]
-
-                next_tokens = torch.argmax(next_token_logits, dim=-1, keepdim=True)
-                if next_tokens == tokenizer.eos_token_id:
-                    break
-                decoder_input_ids = torch.cat(
-                    [decoder_input_ids, next_tokens],
-                    dim=1
-                )
-
-                generated.append(next_tokens)
-
-            generated = torch.cat(generated, dim=1)  # (B, max_len)
-
-            # decode predictions
-            preds = tokenizer.batch_decode(
-                generated, skip_special_tokens=True
-            )
-
-            # decode labels (replace -100 first)
-            labels_clean = labs.clone()
-            labels_clean[labels_clean == -100] = tokenizer.pad_token_id
-
-            targets = tokenizer.batch_decode(
-                labels_clean, skip_special_tokens=True
-            )
-
-            for p, t in zip(preds, targets):
-                preds.append(p)
-                labels.append(t)
-
-                if p.strip() == t.strip():
-                    correct += 1
-                total += 1
-    acc = correct / total
-    print("accuracy: ", acc)
-
-    morph.to("cpu")
-    del morph
-    gc.collect()    
-    return acc
 def test_lang_morph(
     morph_model,
     language_model,
@@ -120,9 +33,6 @@ def test_lang_morph(
     batch_size: int = 64,
     max_len: int = 5,
 ):
-    import torch, gc
-    from torch.utils.data import DataLoader
-    from tqdm import tqdm
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -202,36 +112,59 @@ def test_lang_morph(
 
 def test_lang_morph_causal(morph, language_model, pretrained_checkpoint, dataset, best_lambda:float=1.0, batch_size:int=8):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    tokenizer = AutoTokenizer.from_pretrained(pretrained_checkpoint, trust_remote_code=True, padding_side="left")
+
+    tokenizer = AutoTokenizer.from_pretrained(
+        pretrained_checkpoint, trust_remote_code=True, padding_side="left"
+    )
     tokenizer.pad_token = tokenizer.eos_token
+
     lv = get_language_vector_causal(pretrained_checkpoint, language_model)
+    model = apply_language_vector_to_model(morph, lv, best_lambda)
 
-    morph = apply_language_vector_to_model(morph, lv, best_lambda)
+    def collate_fn(batch):
+        prompts = [
+            f"Root: {d['root']}\n Features: {d['features']}\n Inflection: "
+            for d in batch
+        ]
+        labels = [d["inflection"] for d in batch]
+        return prompts, labels
 
-    preds = []
-    labels = []
-    morph.to(device).eval()
+    loader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        collate_fn=collate_fn,
+        num_workers=2,
+        pin_memory=True
+    )
+
+    model.to(device).eval()
+    preds, labels = [], []
+
     with torch.no_grad():
-        for data in tqdm(dataset):
-            prompt = f"Root: {data['root']}\n Features: {data['features']}\n Inflection: "
-            inputs = tokenizer(prompt, return_tensors="pt").to(device)
-            output_ids = morph.generate(
+        for prompts, batch_labels in loader:
+            inputs = tokenizer(prompts, return_tensors="pt", padding=True).to(device)
+
+            output_ids = model.generate(
                 **inputs,
                 max_new_tokens=5,
                 do_sample=False
             )
-            text = tokenizer.decode(output_ids[0], skip_special_tokens=True)
-            pred_tags = text.split("Inflection:")[-1].strip().split()
-            preds.append(pred_tags)
-            labels.append(data["inflection"])
-    total = len(preds)
-    correct = sum(1 for pred, lab in zip(preds,labels) if pred == str(lab))
-    accuracy = correct / total if total > 0 else 0
-    print("accuracy: ", accuracy)
-    morph.to("cpu")
-    del morph
+
+            texts = tokenizer.batch_decode(output_ids, skip_special_tokens=True)
+
+            for text, lab in zip(texts, batch_labels):
+                pred = text.split("Inflection:")[-1].strip().split()
+                preds.append(pred)
+                labels.append(lab)
+
+    acc = sum(1 for p, l in zip(preds, labels) if p == str(l)) / len(preds) if preds else 0
+    print("accuracy:", acc)
+
+    model.to("cpu")
+    del model
     gc.collect()
-    return accuracy
+    return acc
 
 if __name__ == "__main__":
     test_lambdas = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
@@ -322,7 +255,7 @@ if __name__ == "__main__":
                 hyperparameter_results = {}
                 torch.set_grad_enabled(False)
                 for l in test_lambdas:
-                    morph_model = EncoderGRUReinflector(base_model, vocab_size=len(tokenizer))
+                    morph_model = BertDecoderReinflector(base_model, vocab_size=len(tokenizer))
                     load_model(morph_model, f"{prefix}/{model_base}/morph_en/model.safetensors", device="cpu")
                     accuracy = test_lang_morph(morph_model, f"{prefix}/{model}", base_model, val_tokenized, l)
                     hyperparameter_results[l] = accuracy
@@ -337,7 +270,7 @@ if __name__ == "__main__":
                 print(best_lambda)
                 with open(f"output/{prefix}/{model_base}/morph.txt", "a") as f:
                     print("language model", model)
-                    morph_model = EncoderGRUReinflector(base_model, vocab_size=len(tokenizer))
+                    morph_model = BertDecoderReinflector(base_model, vocab_size=len(tokenizer))
                     load_model(morph_model, f"{prefix}/{model_base}/morph_en/model.safetensors", device="cpu")
                     accuracy= test_lang_morph(morph_model, f"{prefix}/{model}", base_model, test_tokenized, best_lambda)
                     print(f"accuracy: {accuracy}")  

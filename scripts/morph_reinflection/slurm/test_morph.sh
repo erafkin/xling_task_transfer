@@ -7,8 +7,6 @@
 #SBATCH --ntasks=1
 #SBATCH --mem=15G
 #SBATCH --time=60:00:00
-#SBATCH --mail-user=epr41@georgetown.edu
-#SBATCH --mail-type=END,FAIL
 
 module load cuda/12.5
 #unset LD_LIBRARY_PATH

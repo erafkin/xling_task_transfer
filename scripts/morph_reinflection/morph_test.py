@@ -27,7 +27,7 @@ def apply_language_vector_to_model(morph_model_checkpoint: str, language_vector:
     return model
 
 
-def test_lang_morph(morph_model, language_model, pretrained_checkpoint, dataset, best_lambda:float=1.0, batch_size:int=32):
+def old_test_lang_morph(morph_model, language_model, pretrained_checkpoint, dataset, best_lambda:float=1.0, batch_size:int=32):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     lv = get_language_vector(pretrained_checkpoint, language_model)
     morph = apply_language_vector_to_model(morph_model, lv, best_lambda)
@@ -43,7 +43,7 @@ def test_lang_morph(morph_model, language_model, pretrained_checkpoint, dataset,
         for batch in tqdm(test_dataloader):
             input_ids = batch["input_ids"].to(device)
             attention_mask = batch["attention_mask"].to(device)
-            labels = batch["labels"].to(device)
+            labs = batch["labels"].to(device)
 
             B = input_ids.size(0)
 
@@ -62,7 +62,7 @@ def test_lang_morph(morph_model, language_model, pretrained_checkpoint, dataset,
 
             for _ in range(128):
                 
-                outputs = model(
+                outputs = morph(
                     input_ids=input_ids,
                     attention_mask=attention_mask,
                     decoder_input_ids=decoder_input_ids
@@ -72,7 +72,7 @@ def test_lang_morph(morph_model, language_model, pretrained_checkpoint, dataset,
                 next_token_logits = logits[:, -1, :]
 
                 next_tokens = torch.argmax(next_token_logits, dim=-1, keepdim=True)
-                if (next_tokens == tokenizer.eos_token_id).all():
+                if next_tokens == tokenizer.eos_token_id:
                     break
                 decoder_input_ids = torch.cat(
                     [decoder_input_ids, next_tokens],
@@ -89,7 +89,7 @@ def test_lang_morph(morph_model, language_model, pretrained_checkpoint, dataset,
             )
 
             # decode labels (replace -100 first)
-            labels_clean = labels.clone()
+            labels_clean = labs.clone()
             labels_clean[labels_clean == -100] = tokenizer.pad_token_id
 
             targets = tokenizer.batch_decode(
@@ -108,6 +108,94 @@ def test_lang_morph(morph_model, language_model, pretrained_checkpoint, dataset,
 
     morph.to("cpu")
     del morph
+    gc.collect()    
+    return acc
+def test_lang_morph(
+    morph_model,
+    language_model,
+    pretrained_checkpoint,
+    dataset,
+    tokenizer,
+    best_lambda: float = 1.0,
+    batch_size: int = 64,
+    max_len: int = 5,
+):
+    import torch, gc
+    from torch.utils.data import DataLoader
+    from tqdm import tqdm
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    lv = get_language_vector(pretrained_checkpoint, language_model)
+    model = apply_language_vector_to_model(morph_model, lv, best_lambda)
+    tokenizer = AutoTokenizer.from_pretrained(pretrained_checkpoint)
+    model.to(device).eval()
+    dataset.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"])
+    dataloader = DataLoader(dataset, batch_size=batch_size)
+
+    total, correct = 0, 0
+    all_preds, all_targets = [], []
+
+    with torch.inference_mode():
+        for batch in tqdm(dataloader):
+            input_ids = batch["input_ids"].to(device)
+            attention_mask = batch["attention_mask"].to(device)
+            labels = batch["labels"].to(device)
+
+            B = input_ids.size(0)
+
+            # ---- ENCODE ONCE ----
+            enc = model.encoder(
+                input_ids=input_ids,
+                attention_mask=attention_mask
+            ).last_hidden_state
+            enc = model.enc_proj(enc).mean(dim=1)  # (B, H)
+
+            # ---- INIT ----
+            start_id = tokenizer.pad_token_id
+            prev = torch.full((B, 1), start_id, dtype=torch.long, device=device)
+            hidden = None
+
+            generated = []
+
+            # ---- FAST DECODING ----
+            for _ in range(max_len):
+                x = model.embedding(prev) + enc.unsqueeze(1)  # (B,1,H)
+                out, hidden = model.decoder(x, hidden)
+                logits = model.out(out)  # (B,1,V)
+
+                next_tokens = logits[:, -1, :].argmax(dim=-1, keepdim=True)
+                generated.append(next_tokens)
+
+                prev = next_tokens
+
+                if (next_tokens == tokenizer.eos_token_id):
+                    break
+
+            generated = torch.cat(generated, dim=1)
+
+            # ---- DECODE ----
+            preds = tokenizer.batch_decode(generated, skip_special_tokens=True)
+
+            labels_clean = labels.clone()
+            labels_clean[labels_clean == -100] = tokenizer.pad_token_id
+            targets = tokenizer.batch_decode(labels_clean, skip_special_tokens=True)
+            print("preds", preds[0:5])
+            print("targets", targets[0:5])
+            # ---- METRICS ----
+            for p, t in zip(preds, targets):
+                all_preds.append(p)
+                all_targets.append(t)
+
+                if p.strip() == t.strip():
+                    correct += 1
+                total += 1
+
+    acc = correct / total
+    print("accuracy:", acc)
+
+    model.to("cpu")
+    del model
     gc.collect()
     return acc
 
@@ -129,7 +217,7 @@ def test_lang_morph_causal(morph, language_model, pretrained_checkpoint, dataset
             inputs = tokenizer(prompt, return_tensors="pt").to(device)
             output_ids = morph.generate(
                 **inputs,
-                max_new_tokens=64,
+                max_new_tokens=5,
                 do_sample=False
             )
             text = tokenizer.decode(output_ids[0], skip_special_tokens=True)
@@ -149,7 +237,7 @@ if __name__ == "__main__":
     test_lambdas = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     model_base = "base_finetuned"
     base_models = ["bert", "roberta", "qwen", "granite"]
-    
+    base_models = ["qwen", "granite"]
     language_models = ["language_en_done", 
                     "language_es_done", 
                     "language_hi_done", 
@@ -208,32 +296,17 @@ if __name__ == "__main__":
                     f.write(f"accuracy: {accuracy}\n")
                     f.close()
             else:
-                def preprocess(ex, tokenizer):
-                    src = f"Root {ex['root']} Features {ex['features']}"
+                def preprocess(ex):
+                    src = [f"Root {r} Features {f}" for r, f in zip(ex["root"], ex["features"])]
                     tgt = ex["inflection"]
 
-                    model_in = tokenizer(
-                        src,
-                        truncation=True,
-                        padding="max_length",
-                        max_length=128
-                    )
-                    tgt_tok = tokenizer(
-                        tgt,
-                        truncation=True,
-                        padding="max_length",
-                        max_length=32
-                    )
+                    model_in = tokenizer(src, truncation=True, padding="max_length", max_length=128)
+                    tgt_tok = tokenizer(tgt, truncation=True, padding="max_length", max_length=32)
 
-                    decoder_input = tgt_tok["input_ids"][:-1]
-                    labels = tgt_tok["input_ids"][1:]
+                    decoder_input_ids = [ids[:-1] for ids in tgt_tok["input_ids"]]
+                    labels = [[t if t != tokenizer.pad_token_id else -100 for t in ids[1:]] for ids in tgt_tok["input_ids"]]
 
-                    labels = [
-                        t if t != tokenizer.pad_token_id else -100
-                        for t in labels
-                    ]
-
-                    model_in["decoder_input_ids"] = decoder_input
+                    model_in["decoder_input_ids"] = decoder_input_ids
                     model_in["labels"] = labels
                     return model_in
                 tokenizer.pad_token = tokenizer.sep_token or tokenizer.eos_token
@@ -246,14 +319,6 @@ if __name__ == "__main__":
                     batched=True,
                 )
 
-                mlm_model = AutoModelForMaskedLM.from_pretrained(
-                    base_model,
-                    dtype=torch.float32,
-                )
-                if base_model_str == "bert":
-                    encoder = mlm_model.bert
-                else:
-                    encoder = mlm_model.roberta
                 hyperparameter_results = {}
                 torch.set_grad_enabled(False)
                 for l in test_lambdas:

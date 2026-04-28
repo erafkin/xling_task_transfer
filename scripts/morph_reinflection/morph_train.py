@@ -63,6 +63,62 @@ class EncoderGRUReinflector(nn.Module):
 
         return {"loss": loss, "logits": logits}
 
+class BertDecoderReinflector(nn.Module):
+    def __init__(self, model_name, vocab_size, hidden=128):
+        super().__init__()
+
+        self.encoder = AutoModel.from_pretrained(model_name)
+        enc_hidden = self.encoder.config.hidden_size
+
+        self.enc_proj = nn.Linear(enc_hidden, hidden)
+
+        self.embedding = nn.Embedding(vocab_size, hidden)
+        self.pos_emb = nn.Embedding(128, hidden)
+
+        decoder_layer = nn.TransformerDecoderLayer(
+            d_model=hidden,
+            nhead=2,
+            dim_feedforward=hidden,  # keep small
+            batch_first=True
+        )
+        self.decoder = nn.TransformerDecoder(decoder_layer, num_layers=1)
+
+        self.out = nn.Linear(hidden, vocab_size)
+
+    def forward(self, input_ids, attention_mask, decoder_input_ids, labels=None):
+        B, T = decoder_input_ids.size()
+
+        enc = self.encoder(
+            input_ids=input_ids,
+            attention_mask=attention_mask
+        ).last_hidden_state
+
+        enc = self.enc_proj(enc)
+
+        pos = torch.arange(T, device=decoder_input_ids.device).unsqueeze(0)
+        dec_in = self.embedding(decoder_input_ids) + self.pos_emb(pos)
+
+        tgt_mask = nn.Transformer.generate_square_subsequent_mask(T).to(dec_in.device)
+        memory_key_padding_mask = attention_mask == 0
+
+        dec_out = self.decoder(
+            tgt=dec_in,
+            memory=enc,
+            tgt_mask=tgt_mask,
+            memory_key_padding_mask=memory_key_padding_mask
+        )
+
+        logits = self.out(dec_out)
+
+        loss = None
+        if labels is not None:
+            loss_fn = nn.CrossEntropyLoss(ignore_index=-100)
+            loss = loss_fn(
+                logits.view(-1, logits.size(-1)),
+                labels.view(-1)
+            )
+
+        return {"loss": loss, "logits": logits}
 def get_unimorph_data(lang:str = "eng") -> DatasetDict:
     base = "https://raw.githubusercontent.com/unimorph/"
     url = f"{base}{lang}/master/{lang}"
@@ -87,6 +143,22 @@ def train_model_causal(model_checkpoint):
     """
         parse dataset to be text-to-text
     """
+    def compute_metrics(eval_pred):
+        logits, labels = eval_pred
+        preds = np.argmax(logits, axis=-1)
+
+        # ignore padding
+        mask = labels != -100
+
+        # exact sequence match
+        correct = 0
+        total = labels.shape[0]
+
+        for p, l, m in zip(preds, labels, mask):
+            if np.array_equal(p[m], l[m]):
+                correct += 1
+
+        return {"accuracy": correct / total}
     train_data = []
     dataset = get_unimorph_data()
     
@@ -134,7 +206,7 @@ def train_model_causal(model_checkpoint):
             return model_in
         tokenizer.pad_token = tokenizer.sep_token or tokenizer.eos_token
 
-        model = EncoderGRUReinflector(model_checkpoint, vocab_size=len(tokenizer))
+        model = BertDecoderReinflector(model_checkpoint, vocab_size=len(tokenizer))
 
         train_ds = dataset["train"].map(lambda x: preprocess(x, tokenizer))
         val_ds = dataset["validation"].map(lambda x: preprocess(x, tokenizer))
@@ -145,6 +217,9 @@ def train_model_causal(model_checkpoint):
         args = TrainingArguments(
             output_dir=f"{output_prefix}/morph_en",
             per_device_train_batch_size=32,
+            per_device_eval_batch_size=8,
+            eval_accumulation_steps=1,
+            prediction_loss_only=True,
             num_train_epochs=3,
             save_strategy="no",
             eval_strategy="epoch",
@@ -230,5 +305,5 @@ if __name__ == "__main__":
     bert = "google-bert/bert-base-multilingual-cased"
     qwen = "Qwen/Qwen3-0.6B"
     granite = "ibm-granite/granite-4.0-350m"
-    for m in [granite]:
+    for m in [bert, roberta]:
         train_model_causal(m)

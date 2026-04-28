@@ -150,7 +150,7 @@ def train_model_causal(model_checkpoint):
             per_device_eval_batch_size=8,
             eval_accumulation_steps=1,
             prediction_loss_only=True,
-            num_train_epochs=3,
+            num_train_epochs=6,
             save_strategy="no",
             eval_strategy="epoch",
             learning_rate=1e-5,
@@ -235,5 +235,5 @@ if __name__ == "__main__":
     bert = "google-bert/bert-base-multilingual-cased"
     qwen = "Qwen/Qwen3-0.6B"
     granite = "ibm-granite/granite-4.0-350m"
-    for m in [bert, roberta]:
+    for m in [roberta]:
         train_model_causal(m)

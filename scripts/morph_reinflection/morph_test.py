@@ -110,7 +110,7 @@ def test_lang_morph(
     return acc
 
 
-def test_lang_morph_causal(morph, language_model, pretrained_checkpoint, dataset, best_lambda:float=1.0, batch_size:int=8):
+def test_lang_morph_causal(morph, language_model, pretrained_checkpoint, dataset, best_lambda:float=1.0, batch_size:int=32):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     tokenizer = AutoTokenizer.from_pretrained(
@@ -134,7 +134,7 @@ def test_lang_morph_causal(morph, language_model, pretrained_checkpoint, dataset
         batch_size=batch_size,
         shuffle=False,
         collate_fn=collate_fn,
-        num_workers=2,
+        num_workers=1,
         pin_memory=True
     )
 
@@ -142,7 +142,7 @@ def test_lang_morph_causal(morph, language_model, pretrained_checkpoint, dataset
     preds, labels = [], []
 
     with torch.no_grad():
-        for prompts, batch_labels in loader:
+        for prompts, batch_labels in tqdm(loader):
             inputs = tokenizer(prompts, return_tensors="pt", padding=True).to(device)
 
             output_ids = model.generate(
@@ -155,10 +155,16 @@ def test_lang_morph_causal(morph, language_model, pretrained_checkpoint, dataset
 
             for text, lab in zip(texts, batch_labels):
                 pred = text.split("Inflection:")[-1].strip().split()
-                preds.append(pred)
+                if len(pred) > 0:
+                    preds.append(pred[0])
+                else:
+                    preds.append("")
                 labels.append(lab)
 
-    acc = sum(1 for p, l in zip(preds, labels) if p == str(l)) / len(preds) if preds else 0
+    print("preds", preds[:5])
+    print("labs", labels[:5])
+    print(len(preds), len(labels))
+    acc = sum(p == l for p, l in zip(preds, labels)) / len(preds)
     print("accuracy:", acc)
 
     model.to("cpu")
@@ -208,13 +214,13 @@ if __name__ == "__main__":
                     morph.config.use_cache = False
                 for l in test_lambdas:
                     print("lambda: ", l)
-                    accuracy = test_lang_morph_causal(morph, f"{prefix}/{model}", base_model, val_dataset, l)
+                    accuracy = test_lang_morph_causal(morph, f"{prefix}/{model}", base_model, val_dataset.take(5000), l)
                     hyperparameter_results[l] = accuracy
                 print("hyperparamter search results")
                 print(hyperparameter_results)
                 overall_hyperparameter_results[model][base_model_str] = hyperparameter_results
                 
-                best_lambda = max(hyperparameter_results, key=lambda k: hyperparameter_results.get)
+                best_lambda = max(hyperparameter_results, key=hyperparameter_results.get)
                 if model.split("_")[1] == "en":
                     print("lang en, best lambda 0")
                     best_lambda = 0.0
@@ -263,7 +269,7 @@ if __name__ == "__main__":
                 print(hyperparameter_results)
                 overall_hyperparameter_results[model]["bert" if base_model_str == "bert" else "roberta"] = hyperparameter_results
                 
-                best_lambda = max(hyperparameter_results, key=lambda k: hyperparameter_results.get)
+                best_lambda = max(hyperparameter_results, key=hyperparameter_results.get)
                 if model.split("_")[1] == "en":
                     print("lang en, best lambda 0")
                     best_lambda = 0.0

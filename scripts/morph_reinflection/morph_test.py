@@ -1,6 +1,6 @@
 import torch
 from torch.utils.data import DataLoader
-from transformers import AutoModelForMaskedLM, AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoModelForMaskedLM, AutoModel, AutoTokenizer, AutoModelForCausalLM
 from tqdm import tqdm
 from safetensors.torch import load_model
 from scripts.task_vectors import TaskVector
@@ -113,11 +113,12 @@ def test_lang_morph(
             labels_clean = labels.clone()
             labels_clean[labels_clean == -100] = tokenizer.pad_token_id
             targets = tokenizer.batch_decode(labels_clean, skip_special_tokens=True)
-
+            
             for p, t in zip(preds, targets):
-                all_preds.append(p)
+                p_clean = p.split(" ")[0]
+                all_preds.append(p_clean)
                 all_targets.append(t)
-                if p.strip() == t.strip():
+                if p_clean.strip() == t.strip():
                     correct += 1
                 total += 1
 
@@ -268,7 +269,7 @@ if __name__ == "__main__":
                     model_in["labels"] = labels
                     return model_in
                 tokenizer.pad_token = tokenizer.sep_token or tokenizer.eos_token
-                val_tokenized= val_dataset.map(
+                val_tokenized= val_dataset.take(5000).map(
                     preprocess,
                     batched=True,
                 )

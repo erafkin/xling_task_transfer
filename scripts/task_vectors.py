@@ -4,7 +4,7 @@ import torch
 	From the original ICLR 2023 paper Editing Models with Task Arithmetic, by Gabriel Ilharco, Marco Tulio Ribeiro, Mitchell Wortsman, Suchin Gururangan, Ludwig Schmidt, Hannaneh Hajishirzi and Ali Farhadi
 """ 
 class TaskVector():
-    def __init__(self, pretrained_model=None, finetuned_model=None, vector=None, rules=None):
+    def __init__(self, pretrained_model=None, finetuned_model=None, vector=None):
         """Initializes the task vector from a pretrained and a finetuned checkpoints.
         
         This can either be done by passing two state dicts (one corresponding to the
@@ -18,9 +18,6 @@ class TaskVector():
             with torch.no_grad():
                 pretrained_state_dict = pretrained_model.state_dict()
                 finetuned_state_dict = finetuned_model.state_dict()
-                if rules is not None:
-                    pretrained_state_dict, finetuned_state_dict = align_state_dicts(pretrained_state_dict, finetuned_state_dict, rules)
-
                 self.vector = {}
                 for key in pretrained_state_dict:
                     if pretrained_state_dict[key].dtype in [torch.int64, torch.uint8]:
@@ -77,32 +74,19 @@ class TaskVector():
 
         return single_vector
 
-def remap_state_dict_keys(state_dict, rules):
+def remap_task_vector(tv: TaskVector, rules):
     """
     rules: list of (src_prefix, tgt_prefix)
+    returns NEW TaskVector with remapped keys
     """
-    new_sd = {}
-    for k, v in state_dict.items():
+    new_vector = {}
+
+    for k, v in tv.vector.items():
         new_k = k
         for src, tgt in rules:
             if k.startswith(src):
                 new_k = tgt + k[len(src):]
                 break
-        new_sd[new_k] = v
-    return new_sd
+        new_vector[new_k] = v
 
-def align_state_dicts(pretrained_sd, finetuned_sd, rules):
-    """
-    Returns aligned dicts with matching keys only
-    """
-    ft_mapped = remap_state_dict_keys(finetuned_sd, rules)
-
-    aligned_pre = {}
-    aligned_ft = {}
-
-    for k in pretrained_sd:
-        if k in ft_mapped and pretrained_sd[k].shape == ft_mapped[k].shape:
-            aligned_pre[k] = pretrained_sd[k]
-            aligned_ft[k] = ft_mapped[k]
-
-    return aligned_pre, aligned_ft
+    return TaskVector(vector=new_vector)

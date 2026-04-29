@@ -3,7 +3,7 @@ from torch.utils.data import DataLoader
 from transformers import AutoModelForMaskedLM, AutoModel, AutoTokenizer, AutoModelForCausalLM
 from tqdm import tqdm
 from safetensors.torch import load_model
-from scripts.task_vectors import TaskVector
+from scripts.task_vectors import TaskVector, remap_task_vector
 from scripts.morph_reinflection.morph_train import BertDecoderReinflector, get_unimorph_data
 import gc
 import json
@@ -16,8 +16,8 @@ def get_language_vector(base_model: str, saved_language: str):
         rules = [("bert.encoder.", "encoder.")]
 
     lang_vector = TaskVector(pretrained_model=AutoModelForMaskedLM.from_pretrained(base_model),
-                             finetuned_model=AutoModelForMaskedLM.from_pretrained(saved_language, local_files_only=True),
-                             rules=rules)
+                             finetuned_model=AutoModelForMaskedLM.from_pretrained(saved_language, local_files_only=True))
+    lang_vector = remap_task_vector(tv=lang_vector, rules=rules)
     return lang_vector
 
 def get_language_vector_causal(base_model: str, saved_language: str):

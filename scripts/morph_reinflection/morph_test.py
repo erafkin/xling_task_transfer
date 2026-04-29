@@ -7,6 +7,7 @@ from scripts.task_vectors import TaskVector
 from scripts.morph_reinflection.morph_train import BertDecoderReinflector, get_unimorph_data
 import gc
 import json
+from torch import nn
 
 def get_language_vector(base_model: str, saved_language: str):
     lang_vector = TaskVector(pretrained_model=AutoModelForMaskedLM.from_pretrained(base_model),
@@ -33,12 +34,12 @@ def test_lang_morph(
     batch_size: int = 64,
     max_len: int = 5,
 ):
-
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     lv = get_language_vector(pretrained_checkpoint, language_model)
     model = apply_language_vector_to_model(morph_model, lv, best_lambda)
     tokenizer = AutoTokenizer.from_pretrained(pretrained_checkpoint)
+
     model.to(device).eval()
     dataset.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"])
     dataloader = DataLoader(dataset, batch_size=batch_size)
@@ -47,42 +48,51 @@ def test_lang_morph(
     all_preds, all_targets = [], []
 
     with torch.inference_mode():
-        for batch in tqdm(dataloader):
+        for batch in dataloader:
             input_ids = batch["input_ids"].to(device)
             attention_mask = batch["attention_mask"].to(device)
             labels = batch["labels"].to(device)
 
             B = input_ids.size(0)
 
-            # ---- ENCODE ONCE ----
+            # ---- ENCODE ----
             enc = model.encoder(
                 input_ids=input_ids,
                 attention_mask=attention_mask
             ).last_hidden_state
-            enc = model.enc_proj(enc).mean(dim=1)  # (B, H)
+            enc = model.enc_proj(enc)
+
+            memory_key_padding_mask = attention_mask == 0
 
             # ---- INIT ----
             start_id = tokenizer.pad_token_id
-            prev = torch.full((B, 1), start_id, dtype=torch.long, device=device)
-            hidden = None
+            generated = torch.full((B, 1), start_id, device=device)
 
-            generated = []
+            # ---- AUTOREGRESSIVE DECODING ----
+            for _ in range(5):
+                T = generated.size(1)
 
-            # ---- FAST DECODING ----
-            for _ in range(max_len):
-                x = model.embedding(prev) + enc.unsqueeze(1)  # (B,1,H)
-                out, hidden = model.decoder(x, hidden)
-                logits = model.out(out)  # (B,1,V)
+                pos = torch.arange(T, device=device).unsqueeze(0)
+                dec_in = model.embedding(generated) + model.pos_emb(pos)
 
-                next_tokens = logits[:, -1, :].argmax(dim=-1, keepdim=True)
-                generated.append(next_tokens)
+                tgt_mask = nn.Transformer.generate_square_subsequent_mask(T).to(device)
 
-                prev = next_tokens
+                dec_out = model.decoder(
+                    tgt=dec_in,
+                    memory=enc,
+                    tgt_mask=tgt_mask,
+                    memory_key_padding_mask=memory_key_padding_mask
+                )
 
-                if (next_tokens == tokenizer.eos_token_id):
+                logits = model.out(dec_out)  # (B, T, V)
+                next_token = logits[:, -1, :].argmax(dim=-1, keepdim=True)
+
+                generated = torch.cat([generated, next_token], dim=1)
+
+                if (next_token == tokenizer.eos_token_id).all():
                     break
 
-            generated = torch.cat(generated, dim=1)
+            generated = generated[:, 1:]  # remove start token
 
             # ---- DECODE ----
             preds = tokenizer.batch_decode(generated, skip_special_tokens=True)
@@ -90,13 +100,11 @@ def test_lang_morph(
             labels_clean = labels.clone()
             labels_clean[labels_clean == -100] = tokenizer.pad_token_id
             targets = tokenizer.batch_decode(labels_clean, skip_special_tokens=True)
-            print("preds", preds[0:5])
-            print("targets", targets[0:5])
-            # ---- METRICS ----
+            print("preds", preds)
+            print("targets", targets)
             for p, t in zip(preds, targets):
                 all_preds.append(p)
                 all_targets.append(t)
-
                 if p.strip() == t.strip():
                     correct += 1
                 total += 1
@@ -170,7 +178,6 @@ if __name__ == "__main__":
     test_lambdas = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     model_base = "base_finetuned"
     base_models = ["bert", "roberta", "qwen", "granite"]
-    base_models = ["qwen", "granite"]
     language_models = ["language_en_done", 
                     "language_es_done", 
                     "language_hi_done", 

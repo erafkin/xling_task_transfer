@@ -11,9 +11,9 @@ from torch import nn
 
 def get_language_vector(base_model: str, saved_language: str):
     if "roberta" in base_model:
-        rules = [("roberta.encoder.", "encoder.")]
+        rules = [("roberta.encoder.", "encoder.encoder.")]
     else:
-        rules = [("bert.encoder.", "encoder.")]
+        rules = [("bert.encoder.", "encoder.encoder.")]
 
     lang_vector = TaskVector(pretrained_model=AutoModelForMaskedLM.from_pretrained(base_model),
                              finetuned_model=AutoModelForMaskedLM.from_pretrained(saved_language, local_files_only=True),

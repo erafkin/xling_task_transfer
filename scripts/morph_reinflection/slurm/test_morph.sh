@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name="morph_test"
 #SBATCH --nodes=1
-#SBATCH --partition=base
+#SBATCH --partition=spot
 #SBATCH --output="%x.o%j"
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1

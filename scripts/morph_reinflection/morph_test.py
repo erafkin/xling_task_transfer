@@ -48,7 +48,7 @@ def test_lang_morph(
     all_preds, all_targets = [], []
 
     with torch.inference_mode():
-        for batch in dataloader:
+        for batch in tqdm(dataloader):
             input_ids = batch["input_ids"].to(device)
             attention_mask = batch["attention_mask"].to(device)
             labels = batch["labels"].to(device)
@@ -89,7 +89,7 @@ def test_lang_morph(
 
                 generated = torch.cat([generated, next_token], dim=1)
 
-                if (next_token == tokenizer.eos_token_id).all():
+                if (next_token == tokenizer.eos_token_id):
                     break
 
             generated = generated[:, 1:]  # remove start token
@@ -100,8 +100,6 @@ def test_lang_morph(
             labels_clean = labels.clone()
             labels_clean[labels_clean == -100] = tokenizer.pad_token_id
             targets = tokenizer.batch_decode(labels_clean, skip_special_tokens=True)
-            print("preds", preds)
-            print("targets", targets)
             for p, t in zip(preds, targets):
                 all_preds.append(p)
                 all_targets.append(t)

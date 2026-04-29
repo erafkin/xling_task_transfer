@@ -47,6 +47,9 @@ def test_lang_morph(
     total, correct = 0, 0
     all_preds, all_targets = [], []
 
+    bos_id = tokenizer.cls_token_id or tokenizer.bos_token_id
+    eos_id = tokenizer.eos_token_id
+
     with torch.inference_mode():
         for batch in tqdm(dataloader):
             input_ids = batch["input_ids"].to(device)
@@ -65,11 +68,11 @@ def test_lang_morph(
             memory_key_padding_mask = attention_mask == 0
 
             # ---- INIT ----
-            start_id = tokenizer.pad_token_id
-            generated = torch.full((B, 1), start_id, device=device)
+            generated = torch.full((B, 1), bos_id, device=device)
+            finished = torch.zeros(B, dtype=torch.bool, device=device)
 
             # ---- AUTOREGRESSIVE DECODING ----
-            for _ in range(5):
+            for _ in range(max_len):
                 T = generated.size(1)
 
                 pos = torch.arange(T, device=device).unsqueeze(0)
@@ -85,14 +88,24 @@ def test_lang_morph(
                 )
 
                 logits = model.out(dec_out)  # (B, T, V)
-                next_token = logits[:, -1, :].argmax(dim=-1, keepdim=True)
+                next_token = logits[:, -1, :].argmax(dim=-1)
 
-                generated = torch.cat([generated, next_token], dim=1)
+                # ---- block immediate repetition ----
+                repeat_mask = (generated[:, -1] == next_token)
+                if eos_id is not None:
+                    next_token[repeat_mask] = eos_id
 
-                if (next_token == tokenizer.eos_token_id):
+                # ---- force finished to stay EOS ----
+                if eos_id is not None:
+                    next_token[finished] = eos_id
+                    finished |= (next_token == eos_id)
+
+                generated = torch.cat([generated, next_token.unsqueeze(1)], dim=1)
+
+                if eos_id is not None and finished.all():
                     break
 
-            generated = generated[:, 1:]  # remove start token
+            generated = generated[:, 1:]  # remove BOS
 
             # ---- DECODE ----
             preds = tokenizer.batch_decode(generated, skip_special_tokens=True)
@@ -100,6 +113,7 @@ def test_lang_morph(
             labels_clean = labels.clone()
             labels_clean[labels_clean == -100] = tokenizer.pad_token_id
             targets = tokenizer.batch_decode(labels_clean, skip_special_tokens=True)
+
             for p, t in zip(preds, targets):
                 all_preds.append(p)
                 all_targets.append(t)

@@ -10,8 +10,14 @@ import json
 from torch import nn
 
 def get_language_vector(base_model: str, saved_language: str):
+    if "roberta" in base_model:
+        rules = [("roberta.encoder.", "encoder.")]
+    else:
+        rules = [("bert.encoder.", "encoder.")]
+
     lang_vector = TaskVector(pretrained_model=AutoModelForMaskedLM.from_pretrained(base_model),
-                             finetuned_model=AutoModelForMaskedLM.from_pretrained(saved_language, local_files_only=True))
+                             finetuned_model=AutoModelForMaskedLM.from_pretrained(saved_language, local_files_only=True),
+                             rules=rules)
     return lang_vector
 
 def get_language_vector_causal(base_model: str, saved_language: str):

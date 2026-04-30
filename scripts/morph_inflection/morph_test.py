@@ -4,7 +4,7 @@ from transformers import AutoModelForMaskedLM, AutoModel, AutoTokenizer, AutoMod
 from tqdm import tqdm
 from safetensors.torch import load_model
 from scripts.task_vectors import TaskVector, remap_task_vector
-from scripts.morph_reinflection.morph_train import BertDecoderReinflector, get_unimorph_data
+from scripts.morph_inflection.morph_train import BertDecoderReinflector, get_unimorph_data
 import gc
 import json
 from torch import nn

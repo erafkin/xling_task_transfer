@@ -22,4 +22,4 @@ pip install torch==2.5.1+cu124 torchvision==0.20.1+cu124 \
 pip install -r requirements.txt --upgrade-strategy only-if-needed
 
 python3.11 --version
-python3.11 ./scripts/morph_reinflection/morph_test.py
+python3.11 ./scripts/morph_inflection/morph_test.py

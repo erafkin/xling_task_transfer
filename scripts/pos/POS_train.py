@@ -16,7 +16,7 @@ from seqeval.metrics import f1_score
 import re
 from trl import SFTTrainer, SFTConfig
 import wandb
-
+from typing import Optional
 
 from scripts.task_utils import load_conllu_data, TokenClassificationHead
 
@@ -132,7 +132,7 @@ def train_POS_model(model_checkpoint, GUM_folder: str = "GUM_en"):
     trainer.train()
     trainer.save_model(f"{output_prefix}/POS_en")
 
-def train_POS_model_causal(model_checkpoint, GUM_folder: str = "GUM_en"):
+def train_POS_model_causal(model_checkpoint, GUM_folder: Optional[str] = "GUM_en", PUD_folder:Optional[str] = None):
     """
         parse dataset to be text-to-text
     """
@@ -162,10 +162,16 @@ def train_POS_model_causal(model_checkpoint, GUM_folder: str = "GUM_en"):
         y_pred = [extract_tags(p) for p in preds_text]
         y_true = [extract_tags(l) for l in labels_text]
         return {"f1": f1_score(y_true, y_pred)}
-    
-    train_dataset = load_conllu_data(f"{GUM_folder}/en_gum-ud-train.conllu")
-    dev_dataset = load_conllu_data(f"{GUM_folder}/en_gum-ud-dev.conllu")
-    dataset = DatasetDict({"train": Dataset.from_pandas(train_dataset), "dev": Dataset.from_pandas(dev_dataset)})
+    if GUM_folder is not None:
+        train_dataset = load_conllu_data(f"{GUM_folder}/en_gum-ud-train.conllu")
+        dev_dataset = load_conllu_data(f"{GUM_folder}/en_gum-ud-dev.conllu")
+        dataset = DatasetDict({"train": Dataset.from_pandas(train_dataset), "dev": Dataset.from_pandas(dev_dataset)})
+    elif PUD_folder is not None:
+        ds = load_conllu_data(f"{PUD_folder}/en_pud-ud-test.conllu")
+        ds_split = Dataset.from_pandas(train_dataset).train_test_split(test_size=0.1)
+        dataset = DatasetDict({"train": ds_split["train"], "dev": ds_split["test"]})
+    else:
+        raise Exception("please point to a valid training data folder, either GUM or PUD.")
     train_data = []
     for datum in dataset["train"]:
         train_data.append(
@@ -192,7 +198,7 @@ def train_POS_model_causal(model_checkpoint, GUM_folder: str = "GUM_en"):
         output_prefix = "qwen/base_finetuned"
 
     training_args = SFTConfig(
-            output_dir=f"{output_prefix}/POS_en",
+            output_dir=f"{output_prefix}/POS_en{"" if PUD_folder is None else "_PUD"}",
             eval_strategy="epoch",
             learning_rate=2e-5,
             num_train_epochs=10, 
@@ -208,7 +214,7 @@ def train_POS_model_causal(model_checkpoint, GUM_folder: str = "GUM_en"):
             max_length=512,
             report_to='wandb',
             project='xlt',
-            run_name="POS_en"
+            run_name=f"POS_en{"" if PUD_folder is None else "_PUD"}"
     )
     if "granite" in model_checkpoint:
         model.config.use_cache = False
@@ -228,4 +234,4 @@ if __name__ == "__main__":
     bert = "google-bert/bert-base-multilingual-cased"
     qwen = "Qwen/Qwen3-0.6B"
     granite = "ibm-granite/granite-4.0-350m"
-    train_POS_model_causal(granite)
+    train_POS_model_causal(qwen, GUM_folder=None, PUD_folder="UD_English-PUD")

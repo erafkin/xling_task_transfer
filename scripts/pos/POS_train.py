@@ -168,7 +168,7 @@ def train_POS_model_causal(model_checkpoint, GUM_folder: Optional[str] = "GUM_en
         dataset = DatasetDict({"train": Dataset.from_pandas(train_dataset), "dev": Dataset.from_pandas(dev_dataset)})
     elif PUD_folder is not None:
         ds = load_conllu_data(f"{PUD_folder}/en_pud-ud-test.conllu")
-        ds_split = Dataset.from_pandas(train_dataset).train_test_split(test_size=0.1)
+        ds_split = Dataset.from_pandas(ds).train_test_split(test_size=0.1)
         dataset = DatasetDict({"train": ds_split["train"], "dev": ds_split["test"]})
     else:
         raise Exception("please point to a valid training data folder, either GUM or PUD.")

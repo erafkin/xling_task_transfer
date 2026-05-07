@@ -198,7 +198,7 @@ def train_POS_model_causal(model_checkpoint, GUM_folder: Optional[str] = "GUM_en
         output_prefix = "qwen/base_finetuned"
 
     training_args = SFTConfig(
-            output_dir=f"{output_prefix}/POS_en{"" if PUD_folder is None else "_PUD"}",
+            output_dir=f"{output_prefix}/POS_en{'' if PUD_folder is None else '_PUD'}",
             eval_strategy="epoch",
             learning_rate=2e-5,
             num_train_epochs=10, 
@@ -214,7 +214,7 @@ def train_POS_model_causal(model_checkpoint, GUM_folder: Optional[str] = "GUM_en
             max_length=512,
             report_to='wandb',
             project='xlt',
-            run_name=f"POS_en{"" if PUD_folder is None else "_PUD"}"
+            run_name=f"POS_en{'' if PUD_folder is None else '_PUD'}"
     )
     if "granite" in model_checkpoint:
         model.config.use_cache = False

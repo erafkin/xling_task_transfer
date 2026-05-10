@@ -53,10 +53,6 @@
             "1.0": 0.0
         }
     },
-    "bert": {},
-    "roberta": {},
-    "qwen": {},
-    "granite": {},
     "language_es_done": {
         "bert": {
             "0.0": 58.8235294117647,

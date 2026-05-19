@@ -30,7 +30,7 @@ Results for each model as well as the visualizations used in the paper are in th
 |Dependency Parsing| [Universal Dependencies](https://universaldependencies.org/)
 |Question Answering| [SQuAD](https://huggingface.co/datasets/rajpurkar/squad)
 |Question Answering| [xQuAD](https://huggingface.co/datasets/google/xquad)
-|Question Answering| [FQuAD](https://aclanthology.org/2020.findings-emnlp.107/)
+|Question Answering| [newsQuADfr](https://huggingface.co/datasets/lincoln/newsquadfr)
 |Morphological Inflection| [Unimorph](https://unimorph.github.io/)
 
 
